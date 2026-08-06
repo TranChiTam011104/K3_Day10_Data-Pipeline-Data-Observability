@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import Any
 import uuid
 
@@ -10,7 +9,8 @@ from core.utils import ensure_parent
 
 
 _MIN_ARTICLES = 5
-_QUESTION_TYPES = frozenset(["summary", "authors", "date", "categories"])
+_QUESTION_TYPES = ("summary", "authors", "date", "categories")
+_TEST_ID_NAMESPACE = uuid.UUID("6246d395-728c-5cc5-a829-5c57f34d97c4")
 
 
 def _build_ground_truth(row: pd.Series, question_type: str) -> str:
@@ -32,16 +32,23 @@ def _build_ground_truth(row: pd.Series, question_type: str) -> str:
 def _paper_question(row: pd.Series, question_type: str) -> str:
     """Write a deterministic question from a row."""
     title = row.get("title", "")
-    safe_title = title[:60] + "…" if len(title) > 60 else title
-
     if question_type == "authors":
-        return f"Who authored the paper titled '{safe_title}'?"
+        return f"Who authored the paper titled '{title}'?"
     if question_type == "date":
-        return f"When was the paper titled '{safe_title}' published?"
+        return f"When was the paper titled '{title}' published?"
     if question_type == "categories":
-        return f"What categories does the paper titled '{safe_title}' belong to?"
+        return f"What categories does the paper titled '{title}' belong to?"
     # summary
-    return f"Provide a brief summary of the paper titled '{safe_title}'."
+    return f"Provide a brief summary of the paper titled '{title}'."
+
+
+def _select_question_type(row: pd.Series, start: int) -> str:
+    """Select a stable question type whose source answer is non-blank."""
+    for offset in range(len(_QUESTION_TYPES)):
+        question_type = _QUESTION_TYPES[(start + offset) % len(_QUESTION_TYPES)]
+        if str(_build_ground_truth(row, question_type)).strip():
+            return question_type
+    raise ValueError(f"Paper {row.get('paper_id', '<unknown>')} has no usable ground truth")
 
 
 def build_test_set(df: pd.DataFrame, output_path) -> list[dict[str, Any]]:
@@ -67,19 +74,19 @@ def build_test_set(df: pd.DataFrame, output_path) -> list[dict[str, Any]]:
 
     test_rows: list[dict[str, Any]] = []
 
-    # Pick one question type per paper, cycling through the four types
-    types_list = list(_QUESTION_TYPES)
+    # Cycle through types, falling forward when a source field is unavailable.
     for i, (_, row) in enumerate(df.iterrows()):
-        qt = types_list[i % len(types_list)]
+        qt = _select_question_type(row, i)
         question = _paper_question(row, qt)
         ground_truth = _build_ground_truth(row, qt)
+        paper_id = str(row["paper_id"])
         test_rows.append(
             {
-                "id": str(uuid.uuid4()),
+                "id": str(uuid.uuid5(_TEST_ID_NAMESPACE, f"{paper_id}\n{qt}")),
                 "question_type": qt,
                 "question": question,
                 "ground_truth": ground_truth,
-                "ground_truth_doc_ids": [str(row["paper_id"])],
+                "ground_truth_doc_ids": [paper_id],
             }
         )
 

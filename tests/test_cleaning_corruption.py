@@ -19,8 +19,9 @@ from ingestion.crossref import PaperRecord
 from ingestion.role3_flow import run_role3_data_flow
 from core.config import load_settings
 from core.utils import write_json
+from evaluation.testset import build_test_set
 from observability.reporting import generate_corruption_report
-from pipelines.corruption_flow import run_corruption_flow
+from pipelines.corruption_flow import _load_baseline_run_date, run_corruption_flow
 
 
 RUN_DATE = datetime(2026, 8, 6, tzinfo=UTC)
@@ -259,3 +260,25 @@ def test_comparison_report_uses_real_baseline_quality_and_freshness(tmp_path) ->
     report = report_path.read_text(encoding="utf-8")
     assert "| Baseline quality | 1/2 checks passed |" in report
     assert "| Baseline | 6 | 1 | False |" in report
+
+
+def test_testset_is_deterministic_and_never_uses_blank_ground_truth(tmp_path) -> None:
+    frame = build_clean_dataframe(baseline_records(), RUN_DATE)
+    frame.at[3, "categories_joined"] = ""
+    frame.at[0, "title"] = "A deterministic retrieval title " * 4
+
+    first = build_test_set(frame, tmp_path / "first.json")
+    second = build_test_set(frame, tmp_path / "second.json")
+
+    assert first == second
+    assert all(item["ground_truth"].strip() for item in first)
+    assert len({item["id"] for item in first}) == len(first)
+    assert frame.at[0, "title"] in first[0]["question"]
+
+
+def test_repair_uses_the_baseline_audit_run_date(tmp_path) -> None:
+    settings = load_settings(project_dir=tmp_path)
+    audit_path = settings.paths.quality_dir / "cleaning_audit_baseline.json"
+    write_json(audit_path, {"run_date": RUN_DATE.isoformat()})
+
+    assert _load_baseline_run_date(settings) == RUN_DATE
