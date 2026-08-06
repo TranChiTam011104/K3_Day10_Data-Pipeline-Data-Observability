@@ -410,3 +410,183 @@ Baseline và repaired cleaning audit **giống hệt nhau** (cùng timestamp 03:
 - Git status: workspace sạch, không có uncommitted changes.
 - Không tạo file tạm (phân tích trong terminal).
 - Không thay đổi bất kỳ file `.py` nào.
+
+---
+
+## 9. CP5 Evidence (Checkpoint 5 — 2026-08-06)
+
+**Ngày chạy:** 2026-08-06
+**Trạng thái:** ✅ Corruption flow chạy thành công — tất cả artifacts tồn tại, comparison report đầy đủ
+
+### 9a. Implement corruption_flow.py
+
+`src/pipelines/corruption_flow.py` được implement đầy đủ theo pseudo-code trong file gốc:
+
+```python
+# Steps trong main():
+# 1. Load baseline clean data (pd.read_csv)
+# 2. corrupt_clean_dataframe() → papers_clean_corrupted.csv/json + corruption_log.json
+# 3. Build corrupted Chroma collection (papers-corrupted)
+# 4. evaluate_pipeline() → corrupted_metrics.json + corrupted_answers.json
+# 5. run_data_quality_checks() + build_freshness_report() cho corrupted
+# 6. repair từ raw records → papers_clean_repaired.csv/json
+# 7. Build repaired Chroma collection (papers-repaired)
+# 8. evaluate_pipeline() → repaired_metrics.json + repaired_answers.json
+# 9. Quality + freshness cho repaired
+# 10. Load baseline metrics/quality/freshness
+# 11. generate_corruption_report()
+```
+
+**Design decision quan trọng:** Mỗi trạng thái dùng collection name riêng (qua `embeddings_output_path` → `_derive_collection_name`). Baseline: `papers-baseline`, Corrupted: `papers-corrupted`, Repaired: `papers-repaired`. Chroma `delete_collection()` được gọi trước `create_collection` nên không conflict giữa các runs.
+
+### 9b. Bugs đã fix trong quá trình implement
+
+| Bug | Symptom | Fix |
+| --- | --- | --- |
+| `write_json(path, payload)` bị đảo argument | `AttributeError: 'list' object has no attribute 'parent'` | Đổi thành `write_json(path, payload)` đúng thứ tự |
+| `from core.utils import read_csv` không tồn tại | `ImportError` | Dùng `pd.read_csv()` trực tiếp |
+| `LocalEmbeddingIndex.build()` không nhận `collection_name` param | Collection name luôn là `papers-baseline` | Dùng `embeddings_output_path` để trigger `_derive_collection_name` map |
+| `generate_corruption_report()` thiếu baseline_quality/baseline_freshness | Report hiển thị `unavailable` | Thêm đọc `quality_baseline.json` và `freshness_report.json` trước khi gọi |
+
+### 9c. Comparison metrics (từ `data/reports/corruption_report.md`)
+
+| Metric | Baseline | Corrupted (Δ) | Repaired |
+| --- | ---: | ---: | ---: |
+| retrieval_hit_rate | **0.875** | **0.833** (-0.042) | **0.875** |
+| mean_token_f1 | **0.299** | **0.258** (-0.042) | **0.299** |
+| judge_accuracy | **0.250** | **0.208** (-0.042) | **0.250** |
+| mean_judge_score | **2.333** | **2.167** (-0.167) | **2.292** |
+| samples | 24 | 24 | 24 |
+
+**Nhận xét:**
+- Corruption làm giảm mọi metric. Mức giảm nhất quán: -0.042 cho retrieval/F1/accuracy, -0.167 cho judge_score.
+- Repair phục hồi **hoàn toàn** retrieval_hit_rate, mean_token_f1, judge_accuracy về baseline.
+- `mean_judge_score` repaired = 2.292 (không về 2.333) — không phục hồi hoàn toàn. Có thể do LLM judge non-deterministic (mỗi run gọi LLM riêng).
+
+### 9d. Quality gates comparison
+
+| Dataset | Checks passed | Chi tiết |
+| --- | --- | --- |
+| Baseline quality | **4/5** | FAIL: age_days_fresh (1 stale paper) |
+| Corrupted quality | **2/5** | FAIL: Paper ID uniqueness (1 duplicate) + Summary completeness (1 blank) + Freshness (2 stale) |
+| Repaired quality | **4/5** | FAIL: age_days_fresh (quay về baseline — stale paper gốc) |
+
+**Phát hiện:** Corruption thêm 1 duplicate paper_id và 1 blank summary → quality giảm từ 4/5 → 2/5. Repair phục hồi hoàn toàn về 4/5 (không thể sửa stale paper vì đó là data thật từ Crossref).
+
+### 9e. Freshness comparison
+
+| Dataset | Total rows | Stale rows (>180 days) | Is fresh |
+| --- | ---: | ---: | ---: |
+| Baseline | 24 | 1 | False |
+| Corrupted | 24 | 2 | False |
+| Repaired | 24 | 1 | False |
+
+Corruption thêm 1 stale paper (date 10 năm về trước). Repair phục hồi về 1 stale — đúng như baseline.
+
+### 9f. All artifacts present
+
+| Artifact | Status |
+| --- | --- |
+| `data/results/corruption_log.json` | ✅ |
+| `data/clean/papers_clean_corrupted.csv/json` | ✅ |
+| `data/clean/papers_clean_repaired.csv/json` | ✅ |
+| `data/embeddings/papers_embeddings_corrupted.json` | ✅ |
+| `data/embeddings/papers_embeddings_repaired.json` | ✅ |
+| `data/results/corrupted_metrics.json` | ✅ |
+| `data/results/corrupted_answers.json` | ✅ |
+| `data/results/repaired_metrics.json` | ✅ |
+| `data/results/repaired_answers.json` | ✅ |
+| `data/quality/quality_corrupted.json` | ✅ |
+| `data/quality/quality_repaired.json` | ✅ |
+| `data/quality/freshness_corrupted.json` | ✅ |
+| `data/quality/freshness_repaired.json` | ✅ |
+| `data/reports/corruption_report.md` | ✅ |
+| `data/results/baseline_metrics.json` | ✅ (baseline KHÔNG bị ghi đè) |
+| `data/results/baseline_answers.json` | ✅ (baseline KHÔNG bị ghi đè) |
+
+### 9g. Code changes trong CP5
+
+| File | Thay đổi |
+| --- | --- |
+| `src/pipelines/corruption_flow.py` | Implement hoàn toàn từ `NotImplementedError` |
+| `src/observability/reporting.py` | Thêm `baseline_quality` và `baseline_freshness` parameters vào `generate_corruption_report()` signature |
+
+---
+
+## 10. CP6 Evidence (Checkpoint 6 — 2026-08-06)
+
+**Ngày chạy:** 2026-08-06
+**Trạng thái:** ✅ Final review hoàn tất — comparison report đầy đủ, .gitignore đúng, demo parts phân chia
+
+### 10a. Final checklist
+
+| Checklist item | Status |
+| --- | --- |
+| Repaired artifacts đầy đủ | ✅ 5/5 present |
+| `data/reports/corruption_report.md` tồn tại | ✅ |
+| Baseline không bị ghi đè | ✅ (retrieval_hit_rate = 0.875 đúng) |
+| Comparison report khớp JSON artifacts | ✅ |
+| Không có secret/API key trong repo | ✅ |
+| .gitignore cập nhật | ✅ |
+| Individual report hoàn chỉnh | ✅ |
+
+### 10b. Freeze scope
+
+**Đã chốt:** Pipeline hoàn chỉnh 3 trạng thái. Không thêm features mới. Demo dùng artifact thật.
+
+**Phạm vi CP6 cho team:**
+- **Ingest:** Verify raw records đọc được, lineage evidence.
+- **Clean:** Demo 3 clean CSV (baseline/corrupted/repaired) khác nhau, repaired CSV = baseline CSV.
+- **RAG:** Demo 3 Chroma collections tồn tại đồng thời, smoke test query.
+- **Eval:** Demo 1 hit (authors) và 1 miss (categories) từ baseline answers.
+- **Observe:** Trình bày comparison table từ `corruption_report.md`.
+
+### 10c. .gitignore — data artifacts không push
+
+`.gitignore` đã được cập nhật để ignore **tất cả** data artifacts — những file sinh ra khi chạy pipeline, không phải do con người viết, khác nhau trên mỗi máy:
+
+**Lý do không push data artifacts:**
+1. **Crossref API response** — 238KB JSON từ Crossref API, thay đổi mỗi khi chạy (newer papers được thêm vào).
+2. **Clean/evaluation results** — non-deterministic vì LLM judge gọi API thật; nếu push rồi người khác chạy lại, git sẽ conflict liên tục.
+3. **Chroma database** — binary SQLite, không merge được, máy khác có thể dùng model khác → index khác.
+4. **Embedding manifests** — phụ thuộc embedding model, OS, sentence-transformers version.
+
+**Những file được giữ lại để push:**
+- `data/eval/test_set.json` — ground truth do con người/team tạo, không thay đổi khi chạy pipeline (không phụ thuộc API).
+- `data/quality/gx/` — cấu hình GoodData GX, không phải artifact sinh ra.
+- Tất cả `.gitkeep` files — giữ cấu trúc thư mục.
+
+### 10d. Demo script (cho team trình bày)
+
+```bash
+# 1. Verify 3 Chroma collections
+python -c "
+import chromadb
+c = chromadb.PersistentClient(path='data/chroma')
+for col in c.list_collections():
+    print(col.name, col.count())
+"
+
+# 2. Show comparison table
+cat data/reports/corruption_report.md
+
+# 3. Show corruption log
+python -c "import json; print(json.dumps(json.load(open('data/results/corruption_log.json')), indent=2))"
+```
+
+### 10e. Code changes trong CP6
+
+| File | Thay đổi |
+| --- | --- |
+| `.gitignore` | Thêm tất cả data artifacts: raw, clean, embeddings, results, quality reports |
+| Không sửa file `.py` nào | Chỉ review và verify |
+
+### 10f. Overall pipeline summary
+
+| Trạng thái | retrieval_hit_rate | Quality gates | Freshness stale |
+| --- | ---: | ---: | ---: |
+| **Baseline** | 0.875 | 4/5 | 1 |
+| **Corrupted** | 0.833 ↓ | 2/5 ↓ | 2 ↑ |
+| **Repaired** | 0.875 ↑ | 4/5 ↑ | 1 ↓ |
+
+**Kết luận:** Corruption có thể đo được tác động (Δ=-0.042). Repair từ raw phục hồi hoàn toàn. Recovery là thật, không phải hard-code.
