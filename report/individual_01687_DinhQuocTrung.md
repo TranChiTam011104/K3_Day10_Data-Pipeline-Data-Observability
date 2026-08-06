@@ -15,9 +15,10 @@
 ## 2. Vai trò và phạm vi công việc
 
 Tôi phụ trách contract và triển khai cleaning, corruption có kiểm soát, cùng
-repair từ raw snapshot theo phân công nhóm 5 người. Tôi không nhận ownership
-Crossref ingestion, RAG/index, evaluation, observability report hoặc pipeline
-orchestration.
+repair từ raw snapshot theo phân công nhóm 5 người. Sau lần tích hợp cuối, tôi
+cũng hoàn thiện orchestration CP5–CP6 còn để trống để nối các API index,
+evaluation và observability do thành viên khác cung cấp. Tôi không thay đổi
+logic Crossref, retrieval, evaluator hoặc ngưỡng observability.
 
 | Module/deliverable  | File/hàm phụ trách                                               | Input                                     | Output                                    | Trạng thái                                     |
 | ------------------- | ---------------------------------------------------------------- | ----------------------------------------- | ----------------------------------------- | ---------------------------------------------- |
@@ -27,6 +28,7 @@ orchestration.
 | Handoff contract    | `report/role3_cleaning_corruption_contract.md`                   | Starter/downstream source                 | Schema, ownership, blockers               | Hoàn thành                                     |
 | Real data artifacts | `data/clean`, `data/quality`, `data/results/corruption_log.json` | 24 cached Crossref records                | Baseline/corrupted/repaired data evidence | Hoàn thành                                     |
 | RAG/quality metrics | `data/results`, `data/quality`                                   | Test set, index, evaluator, observability | Baseline metrics artifact                | Baseline artifact đã kiểm tra; chưa tái lập local |
+| CP5–CP6 orchestration | `src/pipelines/corruption_flow.py`                            | Baseline/raw/test set + upstream services | Separate corrupted/repaired evaluation   | Implemented và contract-tested; runtime còn bị chặn |
 
 ## 3. Kết quả theo checkpoint
 
@@ -44,7 +46,8 @@ orchestration.
   log về ID, parameter, before/after value và count; artifacts thật có 1
   duplicate ID, 1 blank summary và 1 marked noise row.
 - **CP6:** repair chỉ nhận raw records và chạy lại cùng cleaning path; baseline
-  và repaired JSON có cùng SHA-256.
+  và repaired JSON có cùng SHA-256. Flow tích hợp bắt buộc repaired frame khớp
+  baseline rồi mới ghi repaired index/metrics và comparison report.
 
 ## 4. Contract kỹ thuật
 
@@ -74,9 +77,10 @@ $env:PYTHONDONTWRITEBYTECODE='1'
 python -m pytest -q -p no:cacheprovider tests/test_cleaning_corruption.py
 python script/run_role3_data_flow.py
 python script/run_phase1.py
+python script/run_corruption_flow.py
 ```
 
-Kết quả test lượt cuối sau tích hợp upstream: `9 passed in 1.03s`.
+Kết quả test lượt cuối sau tích hợp upstream: `11 passed in 1.01s`.
 
 Kết quả role3 data flow thật:
 
@@ -88,9 +92,10 @@ Kết quả role3 data flow thật:
   `e5b40fa9900c1a495af3c075af9d4b5417df872cfe95eb4db77732acb13e8efc`;
 - toàn bộ clean/audit/log JSON parse được ở strict mode.
 
-Baseline và corruption-flow preflight đều dừng trước khi ghi index/metrics với
-lỗi thực tế `ModuleNotFoundError: No module named 'datasets'` trong import
-`src/evaluation/metrics.py`.
+Lần chạy mới của corruption flow dừng trước khi ghi artifact với lỗi thực tế
+`RuntimeError: GOOGLE_API_KEY is required when LLM_PROVIDER=gemini.`. Môi
+trường cũng chưa cài `datasets`, nên sau credential preflight vẫn chưa đủ điều
+kiện tái lập evaluation. Flow không ghi metrics giả khi preflight thất bại.
 
 Baseline artifacts do upstream bàn giao đã được kiểm tra nội bộ:
 
@@ -134,9 +139,8 @@ pass.
 
 Blocker còn lại ngoài ownership của tôi:
 
-- `src/pipelines/corruption_flow.py` còn `NotImplementedError`;
 - source observability sau merge trả schema khác với committed baseline quality
-  artifact, nên report không tái lập đúng bằng code hiện tại;
+  artifact; comparison reporter đã được làm tương thích với cả hai schema;
 - test set có 6 ground truth rỗng và builder dùng UUID ngẫu nhiên dù docstring
   tuyên bố deterministic;
 - persisted Chroma collection không có trong repo, còn manifest trỏ tới path

@@ -19,6 +19,8 @@ from ingestion.crossref import PaperRecord
 from ingestion.role3_flow import run_role3_data_flow
 from core.config import load_settings
 from core.utils import write_json
+from observability.reporting import generate_corruption_report
+from pipelines.corruption_flow import run_corruption_flow
 
 
 RUN_DATE = datetime(2026, 8, 6, tzinfo=UTC)
@@ -210,3 +212,50 @@ def test_every_committed_corruption_target_has_evaluation_lineage() -> None:
         for paper_id in operation["paper_ids"]
     }
     assert affected_ids <= evaluated_ids
+
+
+def test_corruption_flow_stops_before_heavy_dependencies_when_baseline_is_missing(
+    tmp_path, monkeypatch
+) -> None:
+    settings = load_settings(project_dir=tmp_path)
+    monkeypatch.setattr(
+        "pipelines.corruption_flow.require_llm_credentials", lambda _: None
+    )
+
+    with pytest.raises(FileNotFoundError, match="Baseline prerequisites"):
+        run_corruption_flow(settings)
+
+
+def test_comparison_report_uses_real_baseline_quality_and_freshness(tmp_path) -> None:
+    report_path = tmp_path / "comparison.md"
+    metrics = {
+        "samples": 6,
+        "retrieval_hit_rate": 1.0,
+        "mean_token_f1": 1.0,
+        "judge_accuracy": 1.0,
+        "mean_judge_score": 5.0,
+    }
+    quality = {
+        "checks": [
+            {"name": "ids", "passed": True},
+            {"name": "freshness", "passed": False},
+        ]
+    }
+    freshness = {"total_rows": 6, "stale_rows": 1, "is_fresh": False}
+
+    generate_corruption_report(
+        report_path,
+        metrics,
+        metrics,
+        metrics,
+        quality,
+        quality,
+        freshness,
+        freshness,
+        baseline_quality=quality,
+        baseline_freshness=freshness,
+    )
+
+    report = report_path.read_text(encoding="utf-8")
+    assert "| Baseline quality | 1/2 checks passed |" in report
+    assert "| Baseline | 6 | 1 | False |" in report
