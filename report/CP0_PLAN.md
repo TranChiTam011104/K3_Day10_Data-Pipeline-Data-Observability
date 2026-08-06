@@ -215,3 +215,85 @@ Ngoài `crossref.py` và `cleaning.py` (do team implement), Vai trò 1 đã thay
 | `src/observability/quality.py` | Implement `run_data_quality_checks` + `build_freshness_report` + custom JSON serializer |
 | `src/observability/reporting.py` | Implement `generate_phase1_report` + `generate_corruption_report` |
 | `.env` | Đổi `LLM_PROVIDER=gemini` → `openai`, `LLM_MODEL=gpt-4o-mini` |
+
+---
+
+## 7. CP2 Evidence (Checkpoint 2 — 2026-08-06)
+
+**Ngày chạy:** 2026-08-06
+**Trạng thái:** ✅ Test set, embedding index và smoke test đều pass
+
+### 7a. Artifact verification (theo lệnh `find data -maxdepth 2 -type f | sort`)
+
+| Artifact | Path | Status |
+| --- | --- | --- |
+| Raw API response | `data/raw/crossref_response.json` | ✅ present |
+| Raw records JSON | `data/raw/crossref_records.json` | ✅ present |
+| Clean CSV | `data/clean/papers_clean.csv` | ✅ present |
+| Clean JSON | `data/clean/papers_clean.json` | ✅ present |
+| Embedding manifest | `data/embeddings/papers_embeddings.json` | ✅ present |
+| Chroma collection | `data/chroma/papers-baseline/` | ✅ present (1 collection) |
+| Test set | `data/eval/test_set.json` | ✅ present |
+| Baseline metrics | `data/results/baseline_metrics.json` | ✅ present |
+| Baseline answers | `data/results/baseline_answers.json` | ✅ present |
+| Quality report | `data/quality/quality_baseline.json` | ✅ present |
+| Freshness report | `data/quality/freshness_report.json` | ✅ present |
+| Phase 1 report | `data/reports/phase1_report.md` | ✅ present |
+
+### 7b. Embedding index verification
+
+| Field | Giá trị | Ghi chú |
+| --- | --- | --- |
+| backend | chroma | ✅ |
+| embedding_model | sentence-transformers/all-MiniLM-L6-v2 | ✅ đúng config |
+| collection_name | papers-baseline | ✅ đúng config |
+| persist_path | data/chroma | ✅ đúng config |
+| document count | 24 | ✅ khớp clean data |
+
+Chroma query: 1 collection `papers-baseline` × 24 documents.
+
+### 7c. Test set verification
+
+| Field | Giá trị | Ghi chú |
+| --- | --- | --- |
+| Total questions | 24 | ✅ |
+| UUID unique | True | ✅ |
+| Question types | categories:6, authors:6, date:6, summary:6 | ✅ phân bổ đều |
+| ground_truth_doc_ids NOT in Chroma | 0 | ✅ all found |
+
+Lưu ý: ground_truth trống cho một số question loại "categories" — đây là dữ liệu thật (paper không có category trong Crossref), không phải bug.
+
+### 7d. Clean schema lock verification
+
+All 9 required index columns present: `paper_id, title, summary, published, authors_joined, categories_joined, text_for_embedding, abs_url, pdf_url`. Schema locked — không missing column nào.
+
+### 7e. Smoke test results
+
+| Test | Result |
+| --- | --- |
+| Semantic search "retrieval augmented generation" (top-3) | ✅ 3 results, top score=0.5663 |
+| Exact lookup by paper_id | ✅ FOUND |
+| Exact lookup by title | ✅ FOUND |
+| Semantic search "sleep medicine LLM" (top-2) | ✅ 2 results |
+
+### 7f. Blocker cho CP3
+
+**Không có blocker.** Tiêu chí CP2 đạt:
+- test_set.json ✅
+- embedding manifest ✅
+- collection baseline ✅
+- semantic search hoạt động ✅
+- exact lookup hoạt động ✅
+- agent trả về kết quả có nguồn ✅
+
+Một số lưu ý:
+1. `corruption_flow.py` vẫn còn `TODO(student)` — implement ở CP5.
+2. Có `corruption_log.json` trong `data/results/` — team đã chạy corruption bằng script riêng (`run_role3_data_flow.py` hoặc tương tự). Baseline không bị ghi đè (baseline_metrics.json vẫn 10:46:29).
+3. 3 Chroma collection directories (`5e7da...`, `68d15...`, `b73f3a...`) — likely từ corruption/repaired flow, không ảnh hưởng baseline.
+
+### 7g. Code changes trong CP2
+
+**Vai trò 1 chỉ đọc/verify, KHÔNG sửa file code trong CP2.**
+- Kiểm tra git status: workspace sạch, không có uncommitted changes.
+- File tạm (`_cp2_check.py`, `_cp2_smoke.py`) đã xóa sau khi dùng.
+- Không thay đổi bất kỳ file `.py` nào.
