@@ -260,6 +260,9 @@ def test_comparison_report_uses_real_baseline_quality_and_freshness(tmp_path) ->
     report = report_path.read_text(encoding="utf-8")
     assert "| Baseline quality | 1/2 checks passed |" in report
     assert "| Baseline | 6 | 1 | False |" in report
+    assert "To be filled in" not in report
+    assert "retrieval hit-rate delta +0.000" in report
+    assert "Failed corrupted quality checks: freshness" in report
 
 
 def test_testset_is_deterministic_and_never_uses_blank_ground_truth(tmp_path) -> None:
