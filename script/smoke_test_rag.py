@@ -15,7 +15,7 @@ PLACEHOLDER_QUERY = "retrieval augmented generation evaluation"  # SMOKE-TEST PL
 
 def _load_clean_dataframe(settings) -> pd.DataFrame | None:
     if settings.paths.clean_csv.exists():
-        return pd.read_csv(settings.paths.clean_csv)
+        return pd.read_csv(settings.paths.clean_csv, keep_default_na=False)
     if settings.paths.clean_json.exists():
         return pd.DataFrame(read_json(settings.paths.clean_json))
     return None
