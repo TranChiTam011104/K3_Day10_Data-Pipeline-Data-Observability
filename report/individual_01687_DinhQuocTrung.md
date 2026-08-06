@@ -5,9 +5,9 @@
 | Thông tin                    | Nội dung                                    |
 | ---------------------------- | ------------------------------------------- |
 | Họ và tên                    | Đinh Quốc Trung                             |
-| MSSV                         | 2A202601687                                 |
+| MSSV                         | 2A202501687                                 |
 | Khóa/Lớp                     | K3                                          |
-| Tên nhóm                     | Nhóm 5 người                                |
+| Tên nhóm                     | B3-1                                        |
 | Vai trò chính                | Vai trò 3 — Cleaning & Corruption Owner     |
 | Repository                   | `K3_Day10_Data-Pipeline-Data-Observability` |
 | Ngày hoàn thành phần độc lập | 2026-08-06                                  |
@@ -26,7 +26,7 @@ orchestration.
 | Repair              | `repair_clean_dataframe`                                         | Trusted raw `PaperRecord` snapshot        | Rebuilt clean DataFrame                   | Hoàn thành và unit-tested                      |
 | Handoff contract    | `report/role3_cleaning_corruption_contract.md`                   | Starter/downstream source                 | Schema, ownership, blockers               | Hoàn thành                                     |
 | Real data artifacts | `data/clean`, `data/quality`, `data/results/corruption_log.json` | 24 cached Crossref records                | Baseline/corrupted/repaired data evidence | Hoàn thành                                     |
-| RAG/quality metrics | `data/results`, `data/quality`                                   | Test set, index, evaluator, observability | Baseline/corrupted/repaired metrics       | Chưa thể chạy vì dependency upstream còn thiếu |
+| RAG/quality metrics | `data/results`, `data/quality`                                   | Test set, index, evaluator, observability | Baseline metrics artifact                | Baseline artifact đã kiểm tra; chưa tái lập local |
 
 ## 3. Kết quả theo checkpoint
 
@@ -36,9 +36,9 @@ orchestration.
   `age_days`, `summary_chars`, `text_for_embedding`; filter có lý do và dedupe
   stable `paper_id`.
 - **CP2–3:** thêm validation cho schema index/evaluation; chạy trên 24 raw
-  Crossref records thật và ghi clean CSV/JSON cùng audit. Chưa tuyên bố smoke
-  test index hoặc baseline thành công vì upstream test set/observability còn
-  TODO và môi trường thiếu LangChain.
+  Crossref records thật và ghi clean CSV/JSON cùng audit. Baseline artifacts
+  upstream có 24 answers và metrics tự nhất quán, nhưng chưa tái lập được trên
+  máy này vì thiếu dependencies và persisted Chroma collection.
 - **CP4:** corruption dùng deep copy, không mutate baseline.
 - **CP5:** sáu corruption deterministic trên sáu record riêng, có row-level
   log về ID, parameter, before/after value và count; artifacts thật có 1
@@ -76,7 +76,7 @@ python script/run_role3_data_flow.py
 python script/run_phase1.py
 ```
 
-Kết quả test lượt cuối sau tích hợp upstream: `7 passed in 1.05s`.
+Kết quả test lượt cuối sau tích hợp upstream: `9 passed in 1.03s`.
 
 Kết quả role3 data flow thật:
 
@@ -88,14 +88,31 @@ Kết quả role3 data flow thật:
   `e5b40fa9900c1a495af3c075af9d4b5417df872cfe95eb4db77732acb13e8efc`;
 - toàn bộ clean/audit/log JSON parse được ở strict mode.
 
-Baseline preflight dừng trước khi ghi index/metrics với lỗi thực tế
-`ModuleNotFoundError: No module named 'datasets'` trong import
+Baseline và corruption-flow preflight đều dừng trước khi ghi index/metrics với
+lỗi thực tế `ModuleNotFoundError: No module named 'datasets'` trong import
 `src/evaluation/metrics.py`.
+
+Baseline artifacts do upstream bàn giao đã được kiểm tra nội bộ:
+
+- 24 test samples và 24 answers, ID hai tập khớp;
+- mọi retrieved document ID thuộc clean corpus;
+- metrics tính lại từ answers khớp `baseline_metrics.json`:
+  retrieval hit rate `0.875`, mean token F1 `0.3479368128134944`, judge
+  accuracy `0.2916666666666667`, mean judge score `2.5`;
+- quality baseline phản ánh đúng 24 rows, 0 blank/duplicate ID, 0 blank
+  summary và 1 row quá ngưỡng freshness 180 ngày.
+
+Các giới hạn được giữ rõ: `data/chroma/` không có persisted collection,
+embedding manifest và report chứa absolute path từ máy upstream; 6/24 test
+samples có ground truth rỗng. Vì vậy đây là artifact verification, không phải
+một local baseline rerun thành công.
 
 Test dùng `PaperRecord` fixture được khai báo rõ trong test, không được ghi vào
 `data/` và không được dùng làm metric bài nộp. Test xác minh normalization,
 filter/dedupe audit, contract, deterministic corruption, baseline immutability,
-strict JSON log và repair bằng raw records.
+strict JSON log và repair bằng raw records. Hai regression test bổ sung kiểm tra
+trực tiếp committed raw/clean/corrupted/repaired artifacts và chứng minh mọi
+corruption target đều có evaluation lineage trong `test_set.json`.
 
 ## 6. Quyết định kỹ thuật quan trọng
 
@@ -117,9 +134,13 @@ pass.
 
 Blocker còn lại ngoài ownership của tôi:
 
-- `src/evaluation/testset.py`, `src/observability/quality.py`,
-  `src/observability/reporting.py` và `src/pipelines/corruption_flow.py` còn
-  `NotImplementedError`;
+- `src/pipelines/corruption_flow.py` còn `NotImplementedError`;
+- source observability sau merge trả schema khác với committed baseline quality
+  artifact, nên report không tái lập đúng bằng code hiện tại;
+- test set có 6 ground truth rỗng và builder dùng UUID ngẫu nhiên dù docstring
+  tuyên bố deterministic;
+- persisted Chroma collection không có trong repo, còn manifest trỏ tới path
+  trên máy upstream;
 - máy hiện chạy Python 3.14.6, ngoài range 3.11–3.13 của project, và chưa có
   `uv`; environment cũng thiếu `datasets` và LangChain.
 
@@ -141,16 +162,16 @@ cùng evaluator/test set được đối chiếu với artifact thật.
 
 | Metric/signal        | Baseline | Corrupted | Repaired | Nhận xét                            |
 | -------------------- | -------: | --------: | -------: | ----------------------------------- |
-| `retrieval_hit_rate` |      N/A |       N/A |      N/A | Chờ evaluator/pipeline upstream     |
-| `mean_token_f1`      |      N/A |       N/A |      N/A | Chờ evaluator/pipeline upstream     |
-| `judge_accuracy`     |      N/A |       N/A |      N/A | Chờ LLM credentials và evaluator    |
-| `mean_judge_score`   |      N/A |       N/A |      N/A | Chờ LLM credentials và evaluator    |
-| Quality checks       |      N/A |       N/A |      N/A | Observability owner chưa triển khai |
-| Freshness status     |      N/A |       N/A |      N/A | Observability owner chưa triển khai |
+| `retrieval_hit_rate` |    0.875 |       N/A |      N/A | Baseline artifact tự nhất quán       |
+| `mean_token_f1`      | 0.347937 |       N/A |      N/A | Baseline artifact tự nhất quán       |
+| `judge_accuracy`     | 0.291667 |       N/A |      N/A | Baseline artifact tự nhất quán       |
+| `mean_judge_score`   |      2.5 |       N/A |      N/A | Baseline artifact tự nhất quán       |
+| Quality checks       | 7/8 fail |       N/A |      N/A | 1 row quá ngưỡng 180 ngày            |
+| Freshness status     |    stale |       N/A |      N/A | 1/24 row stale theo committed report |
 
-Không có chuỗi nguyên nhân–metric nào được kết luận khi chưa có real artifacts.
-Sau khi upstream hoàn thành, cần chạy cùng raw snapshot, test set, top-k và
-evaluator cho ba trạng thái rồi mới cập nhật phần này.
+Chưa có chuỗi nguyên nhân–metric cho corruption/repair vì hai lượt đánh giá đó
+chưa có artifact. Sau khi upstream hoàn thành, cần chạy cùng raw snapshot, test
+set, top-k và evaluator cho ba trạng thái rồi mới cập nhật phần này.
 
 ## 10. Cam kết
 

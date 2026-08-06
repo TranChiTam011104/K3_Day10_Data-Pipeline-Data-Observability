@@ -9,8 +9,8 @@ interfaces only; baseline/corrupted/repaired metrics must come from real runs.
 | --- | --- | --- |
 | CP0 | Define raw-to-clean and clean-to-index contract | Implemented here |
 | CP1 | Normalize, filter, deduplicate, calculate freshness and embedding text | Implemented and unit-tested |
-| CP2 | Validate fields required by index/evaluation | Contract validation implemented; downstream smoke test remains blocked by missing dependencies/test-set code |
-| CP3 | Verify real clean artifacts and quality-ready fields | Completed on 24 cached Crossref records; downstream baseline remains blocked |
+| CP2 | Validate fields required by index/evaluation | Contract/test-set IDs verified; local index smoke remains blocked by dependencies and missing Chroma collection |
+| CP3 | Verify real clean artifacts and quality-ready fields | Completed on 24 cached Crossref records; committed baseline artifacts are internally consistent but not locally reproduced |
 | CP4 | Preserve baseline; do not corrupt during the break | Enforced by copy-on-corrupt behavior |
 | CP5 | Apply deterministic corruption and write row-level log | Implemented, tested and materialized from the real raw snapshot |
 | CP6 | Repair by rebuilding from trusted raw records | Implemented and verified byte-for-byte at JSON artifact level |
@@ -79,11 +79,13 @@ the baseline/corrupted artifacts.
 
 ## Current blockers
 
-- `src/evaluation/testset.py` and `src/pipelines/corruption_flow.py` remain
-  starter `NotImplementedError` implementations. Baseline orchestration is now
-  present but cannot pass its downstream TODOs.
-- `src/observability/quality.py` and `src/observability/reporting.py` remain
-  `NotImplementedError` implementations.
+- `src/pipelines/corruption_flow.py` remains a starter `NotImplementedError`.
+- The current observability source returns a different schema from the
+  committed baseline quality artifact after the latest merge.
+- The committed test set contains 6/24 blank ground truths and its builder
+  uses random UUIDs despite claiming deterministic output.
+- `data/chroma/` is absent while the embedding manifest points to an absolute
+  persisted path on the upstream machine.
 - `uv` is unavailable and the system Python is 3.14.6, outside the project's
   declared Python 3.11–3.13 range.
 - Baseline preflight currently stops during imports with
@@ -94,5 +96,7 @@ The role 3 data-only entrypoint has now produced real clean, corrupted and
 repaired artifacts from 24 records in `data/raw/crossref_records.json`.
 Baseline and repaired JSON have identical SHA-256
 `e5b40fa9900c1a495af3c075af9d4b5417df872cfe95eb4db77732acb13e8efc`.
-No embedding/evaluation/quality metric is claimed until the blockers above are
-resolved.
+The committed baseline metrics were recomputed from the committed answers and
+match exactly, but they are recorded as upstream artifact verification rather
+than a successful local rerun. No corrupted/repaired RAG metric is claimed
+until the blockers above are resolved.
