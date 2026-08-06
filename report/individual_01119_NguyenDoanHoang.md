@@ -11,7 +11,7 @@
 | Khóa/Lớp         | K3          |
 | Tên nhóm         | B3_1    |
 | Vai trò chính    | Evaluation & Observability Owner (Vai trò 5) |
-| Repository         | https://github.com/TranChiTam011104/K3_Day10_Data-Pipeline-Data-Observability.git |
+| Repository         | https://github.com/TranChiTam011104/K3_Day10_Data-Pipeline-Data-Observability_B3_1.git |
 | Ngày hoàn thành | 2026-08-06               |
 
 ## 2. Vai trò và phạm vi công việc
