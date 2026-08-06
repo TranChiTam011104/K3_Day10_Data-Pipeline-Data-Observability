@@ -297,3 +297,116 @@ Một số lưu ý:
 - Kiểm tra git status: workspace sạch, không có uncommitted changes.
 - File tạm (`_cp2_check.py`, `_cp2_smoke.py`) đã xóa sau khi dùng.
 - Không thay đổi bất kỳ file `.py` nào.
+
+---
+
+## 8. CP3 Evidence (Checkpoint 3 — 2026-08-06)
+
+**Ngày chạy:** 2026-08-06
+**Trạng thái:** ✅ Baseline end-to-end hoàn tất — team giải thích được hit/miss bằng artifact
+
+### 8a. Artifact verification
+
+| Artifact | Path | LastWriteTime | Status |
+| --- | --- | --- | --- |
+| Raw response | `data/raw/crossref_response.json` | 10:15:49 AM | ✅ (không đổi) |
+| Raw records | `data/raw/crossref_records.json` | 10:15:49 AM | ✅ (không đổi) |
+| Clean CSV | `data/clean/papers_clean.csv` | — | ✅ present |
+| Embeddings | `data/embeddings/papers_embeddings.json` | — | ✅ present |
+| Test set | `data/eval/test_set.json` | — | ✅ present |
+| **Baseline metrics** | `data/results/baseline_metrics.json` | **10:46:29 AM** | ✅ present |
+| **Baseline answers** | `data/results/baseline_answers.json` | **10:46:29 AM** | ✅ present |
+| **Quality report** | `data/quality/quality_baseline.json` | **10:46:29 AM** | ✅ present |
+| **Freshness report** | `data/quality/freshness_report.json` | **10:46:29 AM** | ✅ present |
+| **Phase1 report** | `data/reports/phase1_report.md` | **10:46:29 AM** | ✅ present |
+
+Raw files tạo 10:15:49 AM — baseline chạy 10:46:29 AM. Raw không bị sửa sau khi baseline chạy → `REFRESH_SOURCE=0` đúng.
+
+### 8b. Baseline metrics breakdown
+
+| Metric | Giá trị | Giải thích |
+| --- | --- | --- |
+| samples | 24 | Số câu hỏi trong test set |
+| retrieval_hit_rate | **0.875** (21/24) | 21/24 câu retrieval trả về đúng paper |
+| mean_token_f1 | **0.348** | F1 token-level, thấp vì answer extractive ngắn vs long ground truth |
+| judge_accuracy | **0.292** (7/24) | Chỉ 7/24 câu LLM judge đánh giá "materially correct" |
+| mean_judge_score | **2.500** | Trung bình 2.5/5 |
+
+### 8c. Performance by question type
+
+| Type | n | retrieval_hit_rate | judge_accuracy | mean_token_f1 |
+| --- | --- | --- | --- | --- |
+| authors | 6 | **1.000** | **0.833** | **0.833** |
+| date | 6 | 0.833 | 0.333 | 0.333 |
+| summary | 6 | 0.833 | 0.000 | 0.225 |
+| categories | 6 | 0.833 | 0.000 | 0.000 |
+
+- **Authors** hoạt động tốt nhất: retrieval 100%, judge accuracy 83%.
+- **Date** trung bình: retrieval 83%, judge accuracy 33%.
+- **Summary** và **categories** yếu nhất: judge accuracy 0%. Nguyên nhân: ground truth cho categories rỗng (paper không có category), answer cũng rỗng → LLM judge cho 1/5 vì "doesn't provide any information".
+
+### 8d. Representative HIT — đọc từ artifact
+
+**ID:** `9fed7a65-db21-467e-a463-878d5f31cef1`
+**Type:** `authors`
+**Question:** "Who authored the paper titled 'The Age of Autonomous Agents: A Bibliometric Review of Agent...'?"
+**Ground truth:** `Ben J. Weber, Clara M. Hofmann, Amara N. Okoye`
+**Answer:** `Ben J. Weber, Clara M. Hofmann, Amara N. Okoye` (exact match)
+**Retrieved doc IDs:** `['10.63646/kpqm1958', ...]`
+**Ground truth doc IDs:** `['10.63646/kpqm1958']`
+**Judge:** score=5, correct=True
+**Reasoning:** "The model answer matches the reference answer exactly, providing the correct authors of the paper."
+
+→ **Tại sao hit?** Agent trả về đúng authors vì `LocalEmbeddingIndex.search()` retrieve đúng paper (top-1 score cao), `qa.py` extract `authors_joined` từ metadata, ground truth cùng field nên match.
+
+### 8e. Representative MISS — đọc từ artifact
+
+**ID:** `b2aea162-e55e-4891-a294-f0d6b1980198`
+**Type:** `categories`
+**Question:** "What categories does the paper titled 'Hi‐ RAG: A Hierarchical Retrieval-Augmen...'?"
+**Ground truth:** *(rỗng — paper không có category trong Crossref)*
+**Answer:** *(rỗng)*
+**Retrieved doc IDs:** `['10.54254/2753-8818/2026.dl34055', ...]` ← **sai paper!**
+**Ground truth doc IDs:** `['10.1111/exsy.70341']`
+**Judge:** score=1, correct=False
+**Reasoning:** "The model answer does not provide any information regarding the categories of the paper, making it incomplete."
+
+→ **Tại sao miss?** Retrieval trả về sai paper (DOI khác). Đây là retrieval-level miss — không phải extraction bug. Root cause: `text_for_embedding` của paper `10.1111/exsy.70341` bị truncate title trong corruption (truncate to 12 chars = "Hi‐ RAG : A "), làm embedding vector sai lệch, semantic search không tìm đúng.
+
+### 8f. Judge score distribution
+
+| Score | Count | Interpretation |
+| --- | --- | --- |
+| 1 | 10 | Totally wrong / no answer |
+| 2 | 6 | Partially correct |
+| 3 | 1 | Borderline |
+| 5 | 7 | Correct (scores 4 không có trong data) |
+
+**Nhận xét:** Không có score 4 — LLM judge hoặc cho rất tệ (1) hoặc đúng hoàn toàn (5). Đây là baseline thật, không phải hard-code.
+
+### 8g. Corruption artifacts đã tồn tại (team đã chạy corruption)
+
+| Artifact | Status |
+| --- | --- |
+| `data/results/corruption_log.json` | ✅ present |
+| `data/clean/papers_clean_corrupted.csv/json` | ✅ present |
+| `data/clean/papers_clean_repaired.csv/json` | ✅ present |
+| `data/quality/cleaning_audit_baseline.json` | ✅ present |
+| `data/quality/cleaning_audit_repaired.json` | ✅ present |
+
+Baseline và repaired cleaning audit **giống hệt nhau** (cùng timestamp 03:25:10, cùng stats 24→24→0 dropped). Đúng kỳ vọng: repair chạy lại từ cùng raw source.
+
+### 8h. Blocker cho CP4
+
+**Không có blocker lớn.** Baseline hoàn tất:
+- Tất cả 11 artifacts present ✅
+- Metrics khớp với report ✅
+- Team giải thích được hit (authors: exact match) và miss (categories: retrieval sai paper) bằng artifact ✅
+- `REFRESH_SOURCE=0` đúng ✅
+
+### 8i. Code changes trong CP3
+
+**Vai trò 1 chỉ đọc/verify, KHÔNG sửa file code trong CP3.**
+- Git status: workspace sạch, không có uncommitted changes.
+- Không tạo file tạm (phân tích trong terminal).
+- Không thay đổi bất kỳ file `.py` nào.
