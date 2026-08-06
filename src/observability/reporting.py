@@ -170,6 +170,8 @@ def generate_corruption_report(
     repaired_quality: dict[str, Any],
     corrupted_freshness: dict[str, Any],
     repaired_freshness: dict[str, Any],
+    baseline_quality: dict[str, Any] | None = None,
+    baseline_freshness: dict[str, Any] | None = None,
 ) -> None:
     """Write a corruption vs baseline vs repaired comparison markdown report.
 
@@ -244,15 +246,20 @@ def generate_corruption_report(
 
     def quality_summary(label: str, quality: dict[str, Any]) -> None:
         checks = quality.get("checks", [])
-        total = len(checks)
-        ok = sum(1 for c in checks if c["passed"])
-        add(f"| {label} quality | {ok}/{total} checks passed |")
+        if checks:
+            total = len(checks)
+            ok = sum(1 for c in checks if c["passed"])
+            value = f"{ok}/{total} checks passed"
+        else:
+            passed = quality.get("overall_passed", quality.get("passed"))
+            value = "PASS" if passed is True else "FAIL" if passed is False else "unavailable"
+        add(f"| {label} quality | {value} |")
 
     add("## 2. Data Quality")
     add("")
     add("| Dataset | Quality gates |")
     add("| --- | --- |")
-    quality_summary("Baseline", baseline_metrics)  # metrics dict does not have checks; show placeholder
+    quality_summary("Baseline", baseline_quality or {})
     quality_summary("Corrupted", corrupted_quality)
     quality_summary("Repaired", repaired_quality)
     add("")
@@ -261,7 +268,8 @@ def generate_corruption_report(
     add("")
     add("| Dataset | Total rows | Stale rows | Is fresh |")
     add("| --- | --- | --- | --- |")
-    add(f"| Baseline | {corrupted_freshness.get('total_rows','?')} | — | — |")
+    baseline_freshness = baseline_freshness or {}
+    add(f"| Baseline | {baseline_freshness.get('total_rows','?')} | {baseline_freshness.get('stale_rows','?')} | {baseline_freshness.get('is_fresh','?')} |")
     add(f"| Corrupted | {corrupted_freshness.get('total_rows','?')} | {corrupted_freshness.get('stale_rows','?')} | {corrupted_freshness.get('is_fresh','?')} |")
     add(f"| Repaired | {repaired_freshness.get('total_rows','?')} | {repaired_freshness.get('stale_rows','?')} | {repaired_freshness.get('is_fresh','?')} |")
     add("")
