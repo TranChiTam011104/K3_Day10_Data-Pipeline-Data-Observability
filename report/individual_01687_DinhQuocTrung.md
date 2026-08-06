@@ -7,7 +7,7 @@
 | Họ và tên                    | Đinh Quốc Trung                             |
 | MSSV                         | 2A202501687                                 |
 | Khóa/Lớp                     | K3                                          |
-| Tên nhóm                     | B3-1                                        |
+| Tên nhóm                     | B3_1                                        |
 | Vai trò chính                | Vai trò 3 — Cleaning & Corruption Owner     |
 | Repository                   | `K3_Day10_Data-Pipeline-Data-Observability` |
 | Ngày hoàn thành phần độc lập | 2026-08-06                                  |
