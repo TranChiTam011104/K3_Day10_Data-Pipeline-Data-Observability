@@ -145,6 +145,7 @@ def build_clean_dataframe(records: list[PaperRecord], run_date: datetime) -> pd.
         normalized_run_date = run_date.astimezone(UTC)
 
     audit: dict[str, Any] = {
+        "run_date": normalized_run_date.isoformat(),
         "input_rows": len(records),
         "output_rows": 0,
         "duplicate_rows_removed": 0,
