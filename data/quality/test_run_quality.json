@@ -1,0 +1,28 @@
+{
+  "report_name": "test_run",
+  "passed": true,
+  "total_rows": 2,
+  "row_count_check": {
+    "passed": true,
+    "value": 2
+  },
+  "paper_id_check": {
+    "passed": true,
+    "missing_count": 0,
+    "duplicate_count": 0
+  },
+  "title_check": {
+    "passed": true,
+    "missing_count": 0
+  },
+  "summary_check": {
+    "passed": true,
+    "missing_count": 0,
+    "short_count": 0
+  },
+  "freshness_check": {
+    "passed": false,
+    "stale_count": 1,
+    "threshold_days": 180
+  }
+}
