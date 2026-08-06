@@ -6,3 +6,41 @@ src/*.egg-info/
 lab/
 **/__pycache__/
 data/chroma
+
+# ── Data artifacts: machine-generated, environment-specific ────────────────────
+# Crossref API responses — large, API-specific, different on each machine
+# data/raw/crossref_response.json
+# data/raw/crossref_records.json
+
+# Clean datasets — regenerated from raw, non-deterministic across runs
+data/clean/papers_clean.csv
+data/clean/papers_clean.json
+data/clean/papers_clean_corrupted.csv
+data/clean/papers_clean_corrupted.json
+data/clean/papers_clean_repaired.csv
+data/clean/papers_clean_repaired.json
+
+# Embedding manifests — regenerated when embedding model runs
+data/embeddings/papers_embeddings.json
+data/embeddings/papers_embeddings_corrupted.json
+data/embeddings/papers_embeddings_repaired.json
+data/embeddings/_smoke_test.json
+
+# Evaluation results — non-deterministic (LLM judge, different API keys/runs)
+data/results/baseline_metrics.json
+data/results/baseline_answers.json
+data/results/corrupted_metrics.json
+data/results/corrupted_answers.json
+data/results/repaired_metrics.json
+data/results/repaired_answers.json
+data/results/corruption_log.json
+
+# Quality + freshness reports — regenerated from clean/eval results
+data/quality/baseline_quality.json
+data/quality/corrupted_quality.json
+data/quality/repaired_quality.json
+data/quality/freshness_report.json
+data/quality/freshness_corrupted.json
+data/quality/freshness_repaired.json
+data/quality/test_run_quality.json
+data/quality/test_freshness_report.json

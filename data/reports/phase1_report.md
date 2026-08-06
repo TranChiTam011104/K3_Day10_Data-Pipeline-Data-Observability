@@ -12,8 +12,8 @@
 | max_results | 24 |
 | Raw items fetched | 24 |
 | Raw records parsed | 24 |
-| raw_api_response | `D:\laragon\www\Day10Vinuni\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_response.json` |
-| raw_records_json | `D:\laragon\www\Day10Vinuni\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_records.json` |
+| raw_api_response | `D:\Hoc_voi_cha_hanh\AIInAction\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_response.json` |
+| raw_records_json | `D:\Hoc_voi_cha_hanh\AIInAction\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_records.json` |
 
 ## 2. Cleaning
 
@@ -66,8 +66,8 @@
 
 | Artifact | Status | Path |
 | --- | --- | --- |
-| Raw API response | ✅ present | `D:\laragon\www\Day10Vinuni\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_response.json` |
-| Raw records JSON | ✅ present | `D:\laragon\www\Day10Vinuni\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_records.json` |
+| Raw API response | ✅ present | `D:\Hoc_voi_cha_hanh\AIInAction\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_response.json` |
+| Raw records JSON | ✅ present | `D:\Hoc_voi_cha_hanh\AIInAction\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_records.json` |
 | Clean CSV | ✅ present | `papers_clean.csv` |
 | Clean JSON | ✅ present | `papers_clean.json` |
 | Test set | ✅ present | `test_set.json` |
