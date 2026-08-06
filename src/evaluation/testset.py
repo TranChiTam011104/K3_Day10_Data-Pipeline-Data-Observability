@@ -58,6 +58,7 @@ def build_test_set(df: pd.DataFrame, output_path) -> list[dict[str, Any]]:
 
     The set is deterministic (same df → same output) and does not mutate ``df``.
     """
+    df = df.fillna("")
     if len(df) < _MIN_ARTICLES:
         raise ValueError(
             f"Need at least {_MIN_ARTICLES} articles to build a test set; "
