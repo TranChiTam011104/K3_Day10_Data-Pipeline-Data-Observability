@@ -1,0 +1,62 @@
+{
+  "report_name": "repaired",
+  "passed": true,
+  "overall_passed": true,
+  "summary": "All checks passed!",
+  "total_rows": 24,
+  "row_count_check": {
+    "passed": true,
+    "value": 24
+  },
+  "paper_id_check": {
+    "passed": true,
+    "missing_count": 0,
+    "duplicate_count": 0
+  },
+  "title_check": {
+    "passed": true,
+    "missing_count": 0
+  },
+  "summary_check": {
+    "passed": true,
+    "missing_count": 0,
+    "short_count": 0
+  },
+  "freshness_check": {
+    "passed": false,
+    "stale_count": 1,
+    "threshold_days": 180
+  },
+  "checks": [
+    {
+      "name": "Row Count Check",
+      "passed": true,
+      "detail": "24 rows",
+      "count": 24
+    },
+    {
+      "name": "Paper ID Completeness & Uniqueness",
+      "passed": true,
+      "detail": "0 missing, 0 duplicate",
+      "count": 0
+    },
+    {
+      "name": "Title Completeness",
+      "passed": true,
+      "detail": "0 missing",
+      "count": 0
+    },
+    {
+      "name": "Summary Completeness & Length",
+      "passed": true,
+      "detail": "0 missing, 0 short",
+      "count": 0
+    },
+    {
+      "name": "Freshness Check",
+      "passed": false,
+      "detail": "1 stale papers (threshold: 180 days)",
+      "count": 1
+    }
+  ]
+}
