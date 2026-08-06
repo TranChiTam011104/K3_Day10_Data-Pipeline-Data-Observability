@@ -1,0 +1,14 @@
+{
+  "run_date": "2026-08-06T03:25:10.623361+00:00",
+  "input_rows": 24,
+  "output_rows": 24,
+  "duplicate_rows_removed": 0,
+  "filtered_rows": 0,
+  "filter_reasons": {
+    "invalid_record_type": 0,
+    "missing_paper_id": 0,
+    "missing_title": 0,
+    "missing_summary": 0,
+    "invalid_published": 0
+  }
+}

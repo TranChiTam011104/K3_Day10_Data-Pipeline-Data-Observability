@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from dataclasses import asdict
 import json
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -14,6 +16,9 @@ from ingestion.cleaning import (
 )
 from ingestion.corruption import corrupt_clean_dataframe
 from ingestion.crossref import PaperRecord
+from ingestion.role3_flow import run_role3_data_flow
+from core.config import load_settings
+from core.utils import write_json
 
 
 RUN_DATE = datetime(2026, 8, 6, tzinfo=UTC)
@@ -72,6 +77,7 @@ def test_cleaning_filters_invalid_rows_and_audits_every_reason() -> None:
 
     assert len(frame) == 6
     assert audit["input_rows"] == 11
+    assert audit["run_date"] == RUN_DATE.isoformat()
     assert audit["output_rows"] == 6
     assert audit["duplicate_rows_removed"] == 1
     assert audit["filtered_rows"] == 4
@@ -138,3 +144,28 @@ def test_repair_rebuilds_from_raw_records_not_corrupted_dataframe(tmp_path) -> N
 
     assert validate_clean_dataframe(corrupted) == ["paper_id contains duplicates"]
     pd.testing.assert_frame_equal(repaired, baseline)
+
+
+def test_role3_flow_writes_real_handoff_contract_to_configured_paths(tmp_path) -> None:
+    settings = load_settings(project_dir=tmp_path)
+    write_json(
+        settings.paths.raw_records_json,
+        [asdict(record) for record in baseline_records()],
+    )
+
+    summary = run_role3_data_flow(settings, run_date=RUN_DATE)
+
+    assert summary["raw_rows"] == 6
+    assert summary["baseline_rows"] == 6
+    assert summary["corrupted_rows"] == 6
+    assert summary["repaired_rows"] == 6
+    assert summary["baseline_contract_errors"] == []
+    assert summary["repaired_contract_errors"] == []
+    assert summary["corrupted_duplicate_ids"] == 1
+    assert summary["corrupted_blank_summaries"] == 1
+    for artifact in summary["artifacts"].values():
+        assert Path(artifact).is_file()
+
+    baseline_json = json.loads(settings.paths.clean_json.read_text(encoding="utf-8"))
+    repaired_json = json.loads(settings.paths.repaired_clean_json.read_text(encoding="utf-8"))
+    assert baseline_json == repaired_json

@@ -9,11 +9,11 @@ interfaces only; baseline/corrupted/repaired metrics must come from real runs.
 | --- | --- | --- |
 | CP0 | Define raw-to-clean and clean-to-index contract | Implemented here |
 | CP1 | Normalize, filter, deduplicate, calculate freshness and embedding text | Implemented and unit-tested |
-| CP2 | Validate fields required by index/evaluation | Contract validation implemented; downstream smoke test blocked by missing upstream dependencies/code |
-| CP3 | Verify real clean artifacts and quality-ready fields | Blocked until Crossref ingestion produces `data/raw/crossref_records.json` |
+| CP2 | Validate fields required by index/evaluation | Contract validation implemented; downstream smoke test remains blocked by missing dependencies/test-set code |
+| CP3 | Verify real clean artifacts and quality-ready fields | Completed on 24 cached Crossref records; downstream baseline remains blocked |
 | CP4 | Preserve baseline; do not corrupt during the break | Enforced by copy-on-corrupt behavior |
-| CP5 | Apply deterministic corruption and write row-level log | Implemented and unit-tested |
-| CP6 | Repair by rebuilding from trusted raw records | Implemented and unit-tested |
+| CP5 | Apply deterministic corruption and write row-level log | Implemented, tested and materialized from the real raw snapshot |
+| CP6 | Repair by rebuilding from trusted raw records | Implemented and verified byte-for-byte at JSON artifact level |
 
 ## Raw input
 
@@ -79,13 +79,20 @@ the baseline/corrupted artifacts.
 
 ## Current blockers
 
-- `src/ingestion/crossref.py` has not yet implemented parsing/fetch/loading.
-- `src/evaluation/testset.py` and both pipeline entrypoints are still starter
+- `src/evaluation/testset.py` and `src/pipelines/corruption_flow.py` remain
+  starter `NotImplementedError` implementations. Baseline orchestration is now
+  present but cannot pass its downstream TODOs.
+- `src/observability/quality.py` and `src/observability/reporting.py` remain
   `NotImplementedError` implementations.
 - `uv` is unavailable and the system Python is 3.14.6, outside the project's
   declared Python 3.11–3.13 range.
-- Importing the retrieval package currently fails because project dependencies
-  such as `langchain` are not installed in this environment.
+- Baseline preflight currently stops during imports with
+  `ModuleNotFoundError: No module named 'datasets'`; other declared project
+  dependencies such as `langchain` are also not installed in this environment.
 
-Consequently, no real clean/corrupted/repaired artifact or metric is claimed by
-role 3 at this checkpoint.
+The role 3 data-only entrypoint has now produced real clean, corrupted and
+repaired artifacts from 24 records in `data/raw/crossref_records.json`.
+Baseline and repaired JSON have identical SHA-256
+`e5b40fa9900c1a495af3c075af9d4b5417df872cfe95eb4db77732acb13e8efc`.
+No embedding/evaluation/quality metric is claimed until the blockers above are
+resolved.

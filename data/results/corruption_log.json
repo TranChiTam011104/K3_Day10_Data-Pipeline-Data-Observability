@@ -1,0 +1,114 @@
+{
+  "version": "1.0",
+  "input_rows": 24,
+  "output_rows": 24,
+  "baseline_mutated": false,
+  "operation_count": 6,
+  "operations": [
+    {
+      "type": "drop_latest_record",
+      "paper_ids": [
+        "10.2118/234689-pa"
+      ],
+      "parameters": {
+        "count": 1,
+        "selection": "latest_published"
+      },
+      "before_count": 24,
+      "after_count": 23,
+      "before": {
+        "published": "2026-08-05"
+      },
+      "after": null
+    },
+    {
+      "type": "blank_summary",
+      "paper_ids": [
+        "10.1007/s10278-026-02086-9"
+      ],
+      "parameters": {
+        "replacement": ""
+      },
+      "before_count": 23,
+      "after_count": 23,
+      "before": {
+        "summary": "Abstract Diagnosing jawbone lesions in oral and maxillofacial radiology remains challenging due to overlapping radiological features and the need for integrated clinical reasoning. This study aimed to develop and validate JADE-Plus, a novel multimodal, agent-controlled retrieval-augmented generation (RAG) framework for diagnostic decision support in jawbone lesion assessment. JADE-Plus was implemented as a cloud-based, tablet-optimized system integrating a vision-language model (VLM) for panoramic radiograph analysis, a knowledge-grounded RAG module, and an agentic verification loop for diagnostic fusion and re-ranking. The system was evaluated using 40 representative jawbone lesion cases and compared with JADE, GPT-5.4, GPT-5.4 VLM, and ORAD. Performance was assessed using Top-1 and Top-3 accuracy, ablation and statistical analyses, intra-model stability, and response time. JADE-Plus achieved the highest diagnostic performance, with a Top-1 accuracy of 90% (36/40; 95% CI 76\u201397%) and a Top-3 accuracy of 100%, with no missed diagnoses. Cochran\u2019s Q test demonstrated significant differences among models for both Top-3 correctness ( Q = 25.66, p < 0.001) and Top-1 correctness ( Q = 27.55, p < 0.001). Post-hoc McNemar tests with the Benjamini\u2013Hochberg correction showed that JADE-Plus significantly outperformed other models, particularly under the stricter Top-1 evaluation. Ablation analysis showed that the agentic verification stage improved Top-1 and Top-3 accuracy by 15 and 8 percentage points, respectively. JADE-Plus achieved the highest reproducibility (mean Jaccard similarity 0.97 \u00b1 0.12) while maintaining a mean response time of 33 \u00b1 1.5 s per case. JADE-Plus demonstrated superior diagnostic accuracy, stability, and reproducibility compared with baseline systems, supporting multimodal agentic RAG frameworks for jawbone lesion diagnosis.",
+        "summary_chars": 1869
+      },
+      "after": {
+        "summary": "",
+        "summary_chars": 0
+      }
+    },
+    {
+      "type": "inject_summary_noise",
+      "paper_ids": [
+        "10.1093/sleep/zsag091.0346"
+      ],
+      "parameters": {
+        "marker": "[CORRUPTED_NOISE]"
+      },
+      "before_count": 23,
+      "after_count": 23,
+      "before": {
+        "summary": "Abstract Introduction While Large Language Models (LLMs) offer generative capabilities, generic models often lack domain-specific grounding, leading to hallucinations in high-stakes contexts. However, LLMs can serve as clinical decision support tools if augmented with specific domain data. This study evaluates the utility of Retrieval-Augmented Generation (RAG) applied to open-source LLMs, utilizing a curated knowledge base of authoritative sleep medicine textbooks, to quantify improvement in performance. Methods We evaluated four open-source models\u2014Llama-70B, Llama-8B, Qwen-14B, and Qwen-235B, linked to a RAG system indexing five standard textbooks, including ICSD-3 TR. Models were tested on sleep board\u2013style MCQs and clinical vignettes diagnostic accuracy. Performance was assessed across nine configurations derived from three factors: RAG pipeline complexity (Plain vs. Complicated), textbook preprocessing (Uncleaned vs. Cleaned/TOC-aligned), and retriever type (Dense-only vs. Hybrid). Metrics included MCQ Accuracy and the rates at which the correct diagnosis appeared as the top result or within the top 5 differential diagnosis lists for vignettes. Results RAG consistently outperformed the no-RAG baseline, yielding absolute performance gains of 5.6%\u201310.7% for MCQs and 8.1%\u201310.2% for the top diagnosis in cases across all models. For MCQs, Qwen-235B achieved the highest accuracy of 87.3% (vs. 81.7% baseline) using the Plain RAG configuration with Cleaned (TOC-aligned) Hybrid retrieval. Llama-70B followed with 83.6% in the same configuration. For case vignettes, Qwen-235B achieved a correct top diagnosis rate of 66.3% and a correct diagnosis rate within the top 5 differential diagnosis lists of 90.8% using Cleaned Hybrid retrieval configurations. Hybrid retrieval (Dense + Sparse) consistently surpassed Dense-only methods. Notably, while larger models benefited from Cleaned text, smaller models (e.g., Qwen-14B) achieved higher top diagnosis rates with Uncleaned text (57.1% vs. 51.0%), suggesting a dependency on redundant context in lower-parameter settings. Conclusion RAG significantly enhances knowledge performance of open-source LLMs in sleep medicine. Hybrid retrieval and curated, TOC-aligned knowledge bases yield optimal results for large models, whereas smaller models benefit from the redundancy of uncleaned text. These findings suggest that RAG systems can augment LLMs in domain specific knowledge for clinical decision support. Support (if any)"
+      },
+      "after": {
+        "summary": "Abstract Introduction While Large Language Models (LLMs) offer generative capabilities, generic models often lack domain-specific grounding, leading to hallucinations in high-stakes contexts. However, LLMs can serve as clinical decision support tools if augmented with specific domain data. This study evaluates the utility of Retrieval-Augmented Generation (RAG) applied to open-source LLMs, utilizing a curated knowledge base of authoritative sleep medicine textbooks, to quantify improvement in performance. Methods We evaluated four open-source models\u2014Llama-70B, Llama-8B, Qwen-14B, and Qwen-235B, linked to a RAG system indexing five standard textbooks, including ICSD-3 TR. Models were tested on sleep board\u2013style MCQs and clinical vignettes diagnostic accuracy. Performance was assessed across nine configurations derived from three factors: RAG pipeline complexity (Plain vs. Complicated), textbook preprocessing (Uncleaned vs. Cleaned/TOC-aligned), and retriever type (Dense-only vs. Hybrid). Metrics included MCQ Accuracy and the rates at which the correct diagnosis appeared as the top result or within the top 5 differential diagnosis lists for vignettes. Results RAG consistently outperformed the no-RAG baseline, yielding absolute performance gains of 5.6%\u201310.7% for MCQs and 8.1%\u201310.2% for the top diagnosis in cases across all models. For MCQs, Qwen-235B achieved the highest accuracy of 87.3% (vs. 81.7% baseline) using the Plain RAG configuration with Cleaned (TOC-aligned) Hybrid retrieval. Llama-70B followed with 83.6% in the same configuration. For case vignettes, Qwen-235B achieved a correct top diagnosis rate of 66.3% and a correct diagnosis rate within the top 5 differential diagnosis lists of 90.8% using Cleaned Hybrid retrieval configurations. Hybrid retrieval (Dense + Sparse) consistently surpassed Dense-only methods. Notably, while larger models benefited from Cleaned text, smaller models (e.g., Qwen-14B) achieved higher top diagnosis rates with Uncleaned text (57.1% vs. 51.0%), suggesting a dependency on redundant context in lower-parameter settings. Conclusion RAG significantly enhances knowledge performance of open-source LLMs in sleep medicine. Hybrid retrieval and curated, TOC-aligned knowledge bases yield optimal results for large models, whereas smaller models benefit from the redundancy of uncleaned text. These findings suggest that RAG systems can augment LLMs in domain specific knowledge for clinical decision support. Support (if any) [CORRUPTED_NOISE] unrelated-token-sequence-000"
+      }
+    },
+    {
+      "type": "truncate_title",
+      "paper_ids": [
+        "10.1111/exsy.70341"
+      ],
+      "parameters": {
+        "keep_chars": 12
+      },
+      "before_count": 23,
+      "after_count": 23,
+      "before": {
+        "title": "Hi\u2010 RAG : A Hierarchical Retrieval\u2010Augmented Generation Framework for Scalable and Generalisable Tool Selection in Large Language Model Agents"
+      },
+      "after": {
+        "title": "Hi\u2010 RAG : A "
+      }
+    },
+    {
+      "type": "stale_published_date",
+      "paper_ids": [
+        "10.20944/preprints202602.0996.v1"
+      ],
+      "parameters": {
+        "years_subtracted": 10
+      },
+      "before_count": 23,
+      "after_count": 23,
+      "before": {
+        "published": "2026-02-13",
+        "age_days": 174
+      },
+      "after": {
+        "published": "2016-02-13",
+        "age_days": 3827
+      }
+    },
+    {
+      "type": "duplicate_row",
+      "paper_ids": [
+        "10.20944/preprints202604.0339.v1"
+      ],
+      "parameters": {
+        "copies_added": 1
+      },
+      "before_count": 23,
+      "after_count": 24,
+      "before": {
+        "occurrences": 1
+      },
+      "after": {
+        "occurrences": 2
+      }
+    }
+  ]
+}
