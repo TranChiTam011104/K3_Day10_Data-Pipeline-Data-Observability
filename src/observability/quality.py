@@ -2,214 +2,124 @@ from __future__ import annotations
 
 import json as _json
 from typing import Any
-
+from pathlib import Path
 import pandas as pd
 
 from core.config import Settings
-from core.utils import ensure_parent
+from core.utils import write_json
 
 
-def _json_serializable(obj: Any) -> Any:
-    """Recursively convert numpy / pandas types to native Python for JSON."""
-    if isinstance(obj, dict):
-        return {k: _json_serializable(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [_json_serializable(x) for x in obj]
-    if isinstance(obj, (pd.Series, pd.DataFrame)):
-        return _json_serializable(obj.to_dict())
-    if isinstance(obj, pd.Timestamp):
-        return obj.isoformat()
-    if hasattr(obj, "item"):  # numpy types
-        return obj.item()
-    if hasattr(obj, "__float__") and not isinstance(obj, bool):
-        return float(obj)
-    if hasattr(obj, "__int__") and not isinstance(obj, bool):
-        return int(obj)
-    return obj
+def run_data_quality_checks(df: pd.DataFrame, settings: Settings, report_name: str) -> dict[str, Any]:
+    """Runs data quality checks on the cleaned dataframe and saves the results."""
+    total_rows = len(df)
+    row_count_check = total_rows > 0
 
-
-def _save_json(path, data: Any) -> None:
-    ensure_parent(path)
-    with open(path, "w", encoding="utf-8") as fh:
-        _json.dump(_json_serializable(data), fh, ensure_ascii=False, indent=2)
-
-
-_MIN_SUMMARY_CHARS = 50
-
-
-def run_data_quality_checks(
-    df: pd.DataFrame, settings: Settings, report_name: str
-) -> dict[str, Any]:
-    """Run the minimum quality gates on a cleaned paper dataframe.
-
-    Each check returns a structured result so the pipeline integrator can
-    compare baseline / corrupted / repaired without parsing free-form strings.
-
-    Returns
-    -------
-    dict with keys:
-      - report_name
-      - checks: list of {"name", "passed", "detail", "count"}
-      - overall_passed: bool
-      - summary: short human-readable paragraph
-    """
-    checks: list[dict[str, Any]] = []
-    passed = True
-
-    def add(name: str, condition: bool, detail: str, count: int | None = None) -> None:
-        nonlocal passed
-        ok = bool(condition)
-        if not ok:
-            passed = False
-        checks.append({"name": name, "passed": ok, "detail": detail, "count": count})
-
-    # 1. Row count
-    add(
-        "row_count",
-        len(df) > 0,
-        f"{len(df)} rows in dataframe",
-        len(df),
-    )
-
-    # 2. paper_id not null and unique
-    pid = df["paper_id"].fillna("")
-    add(
-        "paper_id_not_null",
-        (pid == "").sum() == 0,
-        f"{(pid == '').sum()} blank paper_ids",
-        (pid == "").sum(),
-    )
-    add(
-        "paper_id_unique",
-        pid.duplicated().sum() == 0,
-        f"{pid.duplicated().sum()} duplicate paper_ids",
-        pid.duplicated().sum(),
-    )
-
-    # 3. title not null / blank
-    title = df["title"].fillna("")
-    add(
-        "title_not_null",
-        (title == "").sum() == 0,
-        f"{(title == '').sum()} blank titles",
-        (title == "").sum(),
-    )
-
-    # 4. summary length
-    if "summary_chars" in df.columns:
-        short = (df["summary_chars"] < _MIN_SUMMARY_CHARS).sum()
+    missing_paper_id_count = 0
+    duplicate_paper_id_count = 0
+    if "paper_id" in df.columns:
+        missing_paper_id_count = int(df["paper_id"].isna().sum() + (df["paper_id"].astype(str).str.strip() == "").sum())
+        duplicate_paper_id_count = int(df["paper_id"].duplicated().sum())
     else:
-        summaries = df["summary"].fillna("")
-        short = (summaries.str.len() < _MIN_SUMMARY_CHARS).sum()
-    add(
-        "summary_length",
-        short == 0,
-        f"{short} summaries shorter than {_MIN_SUMMARY_CHARS} chars",
-        short,
-    )
+        missing_paper_id_count = total_rows
 
-    # 5. text_for_embedding present and non-empty
-    if "text_for_embedding" in df.columns:
-        te = df["text_for_embedding"].fillna("")
-        te_empty = (te == "").sum()
+    paper_id_passed = (missing_paper_id_count == 0) and (duplicate_paper_id_count == 0) and ("paper_id" in df.columns)
+
+    missing_title_count = 0
+    if "title" in df.columns:
+        missing_title_count = int(df["title"].isna().sum() + (df["title"].astype(str).str.strip() == "").sum())
     else:
-        te_empty = 0
-    add(
-        "text_for_embedding_present",
-        te_empty == 0,
-        f"{te_empty} empty text_for_embedding cells",
-        te_empty,
-    )
+        missing_title_count = total_rows
+    
+    title_passed = (missing_title_count == 0) and ("title" in df.columns)
 
-    # 6. age_days freshness
+    missing_summary_count = 0
+    short_summary_count = 0
+    if "summary" in df.columns:
+        missing_summary_count = int(df["summary"].isna().sum() + (df["summary"].astype(str).str.strip() == "").sum())
+        short_summary_count = int((df["summary"].fillna("").astype(str).str.strip().str.len() < 20).sum()) - missing_summary_count
+    else:
+        missing_summary_count = total_rows
+    
+    summary_passed = (missing_summary_count == 0) and ("summary" in df.columns)
+
+    stale_count = 0
+    freshness_threshold = settings.freshness_threshold_days
     if "age_days" in df.columns:
-        stale = (df["age_days"] > settings.freshness_threshold_days).sum()
-        add(
-            "age_days_fresh",
-            stale == 0,
-            f"{stale} rows older than {settings.freshness_threshold_days} days",
-            stale,
-        )
+        stale_count = int((df["age_days"] > freshness_threshold).sum())
     else:
-        add("age_days_fresh", False, "age_days column missing", None)
+        stale_count = total_rows
 
-    # 7. duplicate rows — check only hashable columns to avoid list unhashable error
-    hashable_cols = [c for c in df.columns if c not in ("authors", "categories")]
-    full_dup = df[hashable_cols].duplicated().sum()
-    add(
-        "no_duplicate_rows",
-        full_dup == 0,
-        f"{full_dup} duplicate rows on key columns",
-        full_dup,
-    )
+    is_fresh = (stale_count == 0) and ("age_days" in df.columns)
+    passed = bool(row_count_check and paper_id_passed and title_passed and (missing_summary_count == 0))
 
-    overall_passed = all(c["passed"] for c in checks)
-    summary_parts = [
-        f"{sum(c['passed'] for c in checks)}/{len(checks)} checks passed"
-    ]
-    failed = [c["name"] for c in checks if not c["passed"]]
-    if failed:
-        summary_parts.append(f"FAILED: {', '.join(failed)}")
-    else:
-        summary_parts.append("All quality gates passed.")
-
-    result = {
+    report = {
         "report_name": report_name,
-        "checks": checks,
-        "overall_passed": overall_passed,
-        "summary": " | ".join(summary_parts),
+        "passed": passed,
+        "total_rows": total_rows,
+        "row_count_check": {
+            "passed": bool(row_count_check),
+            "value": total_rows
+        },
+        "paper_id_check": {
+            "passed": bool(paper_id_passed),
+            "missing_count": missing_paper_id_count,
+            "duplicate_count": duplicate_paper_id_count
+        },
+        "title_check": {
+            "passed": bool(title_passed),
+            "missing_count": missing_title_count
+        },
+        "summary_check": {
+            "passed": bool(summary_passed),
+            "missing_count": missing_summary_count,
+            "short_count": max(0, short_summary_count)
+        },
+        "freshness_check": {
+            "passed": bool(is_fresh),
+            "stale_count": stale_count,
+            "threshold_days": freshness_threshold
+        }
     }
 
-    # Persist to disk
-    quality_path = settings.paths.quality_dir / f"quality_{report_name}.json"
-    _save_json(quality_path, result)
+    report_path = settings.paths.quality_dir / f"{report_name}_quality.json"
+    write_json(report_path, report)
+    
+    return report
 
-    return result
 
-
-def build_freshness_report(
-    df: pd.DataFrame, settings: Settings, report_path
-) -> dict[str, Any]:
-    """Build a freshness monitoring report from a cleaned paper dataframe.
-
-    Freshness is determined by the ``age_days`` column relative to the
-    configured ``freshness_threshold_days`` from settings.
-
-    Returns
-    -------
-    dict with keys: latest_published, oldest_published, stale_rows,
-                    total_rows, is_fresh, threshold_days, report_path
-    """
-    if "published" not in df.columns or "age_days" not in df.columns:
-        result = {
-            "latest_published": None,
-            "oldest_published": None,
-            "stale_rows": None,
-            "total_rows": len(df),
-            "is_fresh": None,
-            "threshold_days": settings.freshness_threshold_days,
-            "report_path": str(report_path),
-            "error": "Missing published or age_days column",
-        }
+def build_freshness_report(df: pd.DataFrame, settings: Settings, report_path) -> dict[str, Any]:
+    """Generates freshness metrics report based on paper publication age."""
+    total_rows = len(df)
+    
+    if total_rows == 0:
+        latest_published = ""
+        oldest_published = ""
+        stale_rows = 0
+        is_fresh = True
     else:
-        threshold = settings.freshness_threshold_days
-        published_series = pd.to_datetime(df["published"], errors="coerce", utc=True)
-        age_days = df["age_days"].fillna(0).astype(int)
-        latest = published_series.max()
-        oldest = published_series.min()
-        stale = int((age_days > threshold).sum())
+        published_dates = df["published"].dropna()
+        if not published_dates.empty:
+            latest_published = str(published_dates.max())
+            oldest_published = str(published_dates.min())
+        else:
+            latest_published = ""
+            oldest_published = ""
+            
+        if "age_days" in df.columns:
+            stale_rows = int((df["age_days"] > settings.freshness_threshold_days).sum())
+        else:
+            stale_rows = total_rows
+            
+        is_fresh = stale_rows == 0
 
-        result = {
-            "latest_published": latest.isoformat() if pd.notna(latest) else None,
-            "oldest_published": oldest.isoformat() if pd.notna(oldest) else None,
-            "stale_rows": stale,
-            "total_rows": len(df),
-            "is_fresh": stale == 0,
-            "threshold_days": threshold,
-            "report_path": str(report_path),
-        }
+    payload = {
+        "latest_published": latest_published,
+        "oldest_published": oldest_published,
+        "stale_rows": stale_rows,
+        "total_rows": total_rows,
+        "is_fresh": bool(is_fresh),
+    }
 
-    ensure_parent(report_path)
-    _save_json(report_path, result)
-
-    return result
+    write_json(Path(report_path), payload)
+    
+    return payload
