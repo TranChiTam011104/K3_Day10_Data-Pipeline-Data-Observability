@@ -30,8 +30,6 @@
 
 ## 4. Key Findings
 
-*To be filled in by the team after reviewing the comparison data above.*
-
-- **Corruption impact:** _describe how metrics changed and which check caught the corruption_
-- **Repair fidelity:** _describe whether metrics recovered and which rows were restored_
-- **Limitations:** _any metric that did not recover, or recovered incompletely_
+- **Corruption impact:** retrieval hit-rate delta -0.042; token-F1 delta -0.042. Failed corrupted quality checks: Paper ID Completeness & Uniqueness, Summary Completeness & Length, Freshness Check.
+- **Repair fidelity:** repaired versus baseline retrieval hit-rate delta +0.000 and token-F1 delta +0.000; freshness stale rows changed from 2 to 1.
+- **Limitations:** repaired judge-score delta versus baseline is -0.042. Ragas status and evaluator details must be read from the metrics artifacts; no unmeasured recovery is claimed.

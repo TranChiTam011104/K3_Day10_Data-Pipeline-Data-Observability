@@ -102,7 +102,11 @@ The role 3 data-only entrypoint has now produced real clean, corrupted and
 repaired artifacts from 24 records in `data/raw/crossref_records.json`.
 Baseline and repaired JSON have identical SHA-256
 `e5b40fa9900c1a495af3c075af9d4b5417df872cfe95eb4db77732acb13e8efc`.
-The committed baseline metrics were recomputed from the committed answers and
-match exactly, but they are recorded as upstream artifact verification rather
-than a successful local rerun. No corrupted/repaired RAG metric is claimed
-until the blockers above are resolved.
+The committed baseline, corrupted and repaired metrics were recomputed from
+their committed answers and match exactly. Retrieval hit-rate and token-F1
+decrease by `0.041667` under corruption and return exactly to baseline after
+repair. One identical repaired answer receives a different judge score, so the
+remaining `mean_judge_score` delta is reported as evaluator variance rather
+than attributed to repair. These remain upstream artifact verification rather
+than a successful local rerun because the repaired manifest and persisted
+Chroma collections are unavailable here.
