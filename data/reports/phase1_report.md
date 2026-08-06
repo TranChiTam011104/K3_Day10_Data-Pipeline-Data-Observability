@@ -12,8 +12,8 @@
 | max_results | 24 |
 | Raw items fetched | 24 |
 | Raw records parsed | 24 |
-| raw_api_response | `D:\Hoc_voi_cha_hanh\AIInAction\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_response.json` |
-| raw_records_json | `D:\Hoc_voi_cha_hanh\AIInAction\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_records.json` |
+| raw_api_response | `D:\laragon\www\Day10Vinuni\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_response.json` |
+| raw_records_json | `D:\laragon\www\Day10Vinuni\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_records.json` |
 
 ## 2. Cleaning
 
@@ -29,23 +29,20 @@
 
 | Check | Passed | Detail |
 | --- | --- | --- |
-| ✅ row_count | True | 24 rows in dataframe (count=24) |
-| ✅ paper_id_not_null | True | 0 blank paper_ids (count=0) |
-| ✅ paper_id_unique | True | 0 duplicate paper_ids (count=0) |
-| ✅ title_not_null | True | 0 blank titles (count=0) |
-| ✅ summary_length | True | 0 summaries shorter than 50 chars (count=0) |
-| ✅ text_for_embedding_present | True | 0 empty text_for_embedding cells (count=0) |
-| ❌ age_days_fresh | False | 1 rows older than 180 days (count=1) |
-| ✅ no_duplicate_rows | True | 0 duplicate rows on key columns (count=0) |
+| ✅ Row Count Check | True | 24 rows (count=24) |
+| ✅ Paper ID Completeness & Uniqueness | True | 0 missing, 0 duplicate (count=0) |
+| ✅ Title Completeness | True | 0 missing (count=0) |
+| ✅ Summary Completeness & Length | True | 0 missing, 0 short (count=0) |
+| ❌ Freshness Check | False | 1 stale papers (threshold: 180 days) (count=1) |
 
-**Overall: ❌ FAIL** — 7/8 checks passed | FAILED: age_days_fresh
+**Overall: ✅ PASS** — All checks passed!
 
 ## 4. Freshness
 
 | Field | Value |
 | --- | --- |
-| Latest published | 2026-08-05T00:00:00+00:00 |
-| Oldest published | 2026-01-25T00:00:00+00:00 |
+| Latest published | 2026-08-05 |
+| Oldest published | 2026-01-25 |
 | Total rows | 24 |
 | Stale rows (> 180 days) | 1 |
 | Is fresh | False |
@@ -59,9 +56,9 @@
 | --- | --- |
 | Samples | 24 |
 | retrieval_hit_rate | 0.875 |
-| mean_token_f1 | 0.348 |
-| judge_accuracy | 0.292 |
-| mean_judge_score | 2.500 |
+| mean_token_f1 | 0.299 |
+| judge_accuracy | 0.250 |
+| mean_judge_score | 2.333 |
 | baseline_metrics | `data/results/baseline_metrics.json` |
 | baseline_answers | `data/results/baseline_answers.json` |
 
@@ -69,8 +66,8 @@
 
 | Artifact | Status | Path |
 | --- | --- | --- |
-| Raw API response | ✅ present | `D:\Hoc_voi_cha_hanh\AIInAction\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_response.json` |
-| Raw records JSON | ✅ present | `D:\Hoc_voi_cha_hanh\AIInAction\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_records.json` |
+| Raw API response | ✅ present | `D:\laragon\www\Day10Vinuni\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_response.json` |
+| Raw records JSON | ✅ present | `D:\laragon\www\Day10Vinuni\K3_Day10_Data-Pipeline-Data-Observability\data\raw\crossref_records.json` |
 | Clean CSV | ✅ present | `papers_clean.csv` |
 | Clean JSON | ✅ present | `papers_clean.json` |
 | Test set | ✅ present | `test_set.json` |

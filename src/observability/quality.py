@@ -55,6 +55,8 @@ def run_data_quality_checks(df: pd.DataFrame, settings: Settings, report_name: s
     report = {
         "report_name": report_name,
         "passed": passed,
+        "overall_passed": passed,
+        "summary": "All checks passed!" if passed else "Some quality checks failed.",
         "total_rows": total_rows,
         "row_count_check": {
             "passed": bool(row_count_check),
@@ -78,12 +80,48 @@ def run_data_quality_checks(df: pd.DataFrame, settings: Settings, report_name: s
             "passed": bool(is_fresh),
             "stale_count": stale_count,
             "threshold_days": freshness_threshold
-        }
+        },
+        "checks": [
+            {
+                "name": "Row Count Check",
+                "passed": bool(row_count_check),
+                "detail": f"{total_rows} rows",
+                "count": total_rows
+            },
+            {
+                "name": "Paper ID Completeness & Uniqueness",
+                "passed": bool(paper_id_passed),
+                "detail": f"{missing_paper_id_count} missing, {duplicate_paper_id_count} duplicate",
+                "count": missing_paper_id_count + duplicate_paper_id_count
+            },
+            {
+                "name": "Title Completeness",
+                "passed": bool(title_passed),
+                "detail": f"{missing_title_count} missing",
+                "count": missing_title_count
+            },
+            {
+                "name": "Summary Completeness & Length",
+                "passed": bool(summary_passed),
+                "detail": f"{missing_summary_count} missing, {short_summary_count} short",
+                "count": missing_summary_count + short_summary_count
+            },
+            {
+                "name": "Freshness Check",
+                "passed": bool(is_fresh),
+                "detail": f"{stale_count} stale papers (threshold: {freshness_threshold} days)",
+                "count": stale_count
+            }
+        ]
     }
 
     report_path = settings.paths.quality_dir / f"{report_name}_quality.json"
     write_json(report_path, report)
     
+    # Write a copy to quality_baseline.json if baseline as reporting.py expects this path
+    if report_name == "baseline":
+        write_json(settings.paths.quality_dir / "quality_baseline.json", report)
+        
     return report
 
 
@@ -118,6 +156,7 @@ def build_freshness_report(df: pd.DataFrame, settings: Settings, report_path) ->
         "stale_rows": stale_rows,
         "total_rows": total_rows,
         "is_fresh": bool(is_fresh),
+        "threshold_days": settings.freshness_threshold_days,
     }
 
     write_json(Path(report_path), payload)

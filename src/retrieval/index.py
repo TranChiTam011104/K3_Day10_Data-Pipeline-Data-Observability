@@ -42,24 +42,27 @@ class LocalEmbeddingIndex:
 
     @staticmethod
     def _build_documents(df: pd.DataFrame) -> list[dict[str, Any]]:
+        def sanitize(val):
+            return "" if pd.isna(val) else val
+
         records = df.to_dict(orient="records")
         documents: list[dict[str, Any]] = []
         for index, row in enumerate(records):
             documents.append(
                 {
-                    "record_id": f"{row['paper_id']}::{index}",
-                    "paper_id": row["paper_id"],
-                    "title": row["title"],
-                    "content": row["text_for_embedding"],
+                    "record_id": f"{sanitize(row['paper_id'])}::{index}",
+                    "paper_id": sanitize(row["paper_id"]),
+                    "title": sanitize(row["title"]),
+                    "content": sanitize(row["text_for_embedding"]),
                     "metadata": {
-                        "paper_id": row["paper_id"],
-                        "title": row["title"],
-                        "published": row["published"],
-                        "authors_joined": row["authors_joined"],
-                        "categories_joined": row["categories_joined"],
-                        "summary": row["summary"],
-                        "abs_url": row["abs_url"],
-                        "pdf_url": row["pdf_url"],
+                        "paper_id": sanitize(row["paper_id"]),
+                        "title": sanitize(row["title"]),
+                        "published": sanitize(row["published"]),
+                        "authors_joined": sanitize(row["authors_joined"]),
+                        "categories_joined": sanitize(row["categories_joined"]),
+                        "summary": sanitize(row["summary"]),
+                        "abs_url": sanitize(row["abs_url"]),
+                        "pdf_url": sanitize(row["pdf_url"]),
                     },
                 }
             )
