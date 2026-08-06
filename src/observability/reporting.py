@@ -277,11 +277,39 @@ def generate_corruption_report(
     # ── Findings ────────────────────────────────────────────────────────
     add("## 4. Key Findings")
     add("")
-    add("*To be filled in by the team after reviewing the comparison data above.*")
-    add("")
-    add("- **Corruption impact:** _describe how metrics changed and which check caught the corruption_")
-    add("- **Repair fidelity:** _describe whether metrics recovered and which rows were restored_")
-    add("- **Limitations:** _any metric that did not recover, or recovered incompletely_")
+
+    def delta(metric: str, left: dict[str, Any], right: dict[str, Any]) -> str:
+        before = left.get(metric)
+        after = right.get(metric)
+        if not isinstance(before, (int, float)) or not isinstance(after, (int, float)):
+            return "unavailable"
+        return f"{after - before:+.3f}"
+
+    failed_corrupted_checks = [
+        str(check.get("name", "unnamed check"))
+        for check in corrupted_quality.get("checks", [])
+        if not check.get("passed", False)
+    ]
+    failed_text = ", ".join(failed_corrupted_checks) or "none reported"
+    add(
+        "- **Corruption impact:** retrieval hit-rate delta "
+        f"{delta('retrieval_hit_rate', baseline_metrics, corrupted_metrics)}; "
+        f"token-F1 delta {delta('mean_token_f1', baseline_metrics, corrupted_metrics)}. "
+        f"Failed corrupted quality checks: {failed_text}."
+    )
+    add(
+        "- **Repair fidelity:** repaired versus baseline retrieval hit-rate delta "
+        f"{delta('retrieval_hit_rate', baseline_metrics, repaired_metrics)} and "
+        f"token-F1 delta {delta('mean_token_f1', baseline_metrics, repaired_metrics)}; "
+        f"freshness stale rows changed from {corrupted_freshness.get('stale_rows', '?')} "
+        f"to {repaired_freshness.get('stale_rows', '?')}."
+    )
+    add(
+        "- **Limitations:** repaired judge-score delta versus baseline is "
+        f"{delta('mean_judge_score', baseline_metrics, repaired_metrics)}. "
+        "Ragas status and evaluator details must be read from the metrics artifacts; "
+        "no unmeasured recovery is claimed."
+    )
     add("")
 
     text = "\n".join(lines)
