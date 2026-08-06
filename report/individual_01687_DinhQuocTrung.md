@@ -40,14 +40,17 @@ logic Crossref, retrieval, evaluator hoặc ngưỡng observability.
 - **CP2–3:** thêm validation cho schema index/evaluation; chạy trên 24 raw
   Crossref records thật và ghi clean CSV/JSON cùng audit. Baseline artifacts
   upstream có 24 answers và metrics tự nhất quán, nhưng chưa tái lập được trên
-  máy này vì thiếu dependencies và persisted Chroma collection.
+  máy này vì thiếu dependencies và persisted Chroma collection. Test-set
+  builder mới dùng thứ tự question type cố định, UUID5 và bỏ qua source field
+  rỗng; không tự ghi đè test set baseline đã khóa.
 - **CP4:** corruption dùng deep copy, không mutate baseline.
 - **CP5:** sáu corruption deterministic trên sáu record riêng, có row-level
   log về ID, parameter, before/after value và count; artifacts thật có 1
   duplicate ID, 1 blank summary và 1 marked noise row.
 - **CP6:** repair chỉ nhận raw records và chạy lại cùng cleaning path; baseline
   và repaired JSON có cùng SHA-256. Flow tích hợp bắt buộc repaired frame khớp
-  baseline rồi mới ghi repaired index/metrics và comparison report.
+  baseline rồi mới ghi repaired index/metrics và comparison report. `run_date`
+  được đọc lại từ baseline cleaning audit để `age_days` không lệch khi rerun.
 
 ## 4. Contract kỹ thuật
 
@@ -80,7 +83,7 @@ python script/run_phase1.py
 python script/run_corruption_flow.py
 ```
 
-Kết quả test lượt cuối sau tích hợp upstream: `11 passed in 1.01s`.
+Kết quả test lượt cuối sau tích hợp upstream: `13 passed in 1.01s`.
 
 Kết quả role3 data flow thật:
 
@@ -108,9 +111,10 @@ Baseline artifacts do upstream bàn giao đã được kiểm tra nội bộ:
   summary và 1 row quá ngưỡng freshness 180 ngày.
 
 Các giới hạn được giữ rõ: `data/chroma/` không có persisted collection,
-embedding manifest và report chứa absolute path từ máy upstream; 6/24 test
-samples có ground truth rỗng. Vì vậy đây là artifact verification, không phải
-một local baseline rerun thành công.
+embedding manifest và report chứa absolute path từ máy upstream; test set cũ
+đã dùng để sinh baseline vẫn có 6/24 ground truth rỗng. Builder đã được sửa,
+nhưng artifact không được tái sinh riêng lẻ vì sẽ làm baseline answers/metrics
+mất đồng bộ. Vì vậy đây là artifact verification, không phải local rerun.
 
 Test dùng `PaperRecord` fixture được khai báo rõ trong test, không được ghi vào
 `data/` và không được dùng làm metric bài nộp. Test xác minh normalization,
@@ -141,8 +145,8 @@ Blocker còn lại ngoài ownership của tôi:
 
 - source observability sau merge trả schema khác với committed baseline quality
   artifact; comparison reporter đã được làm tương thích với cả hai schema;
-- test set có 6 ground truth rỗng và builder dùng UUID ngẫu nhiên dù docstring
-  tuyên bố deterministic;
+- committed test set có 6 ground truth rỗng; builder đã deterministic và tránh
+  ground truth rỗng, nhưng cần rerun toàn bộ baseline để thay artifact an toàn;
 - persisted Chroma collection không có trong repo, còn manifest trỏ tới path
   trên máy upstream;
 - máy hiện chạy Python 3.14.6, ngoài range 3.11–3.13 của project, và chưa có

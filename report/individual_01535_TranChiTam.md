@@ -30,6 +30,7 @@
 | Implement `run_data_quality_checks` + `build_freshness_report` | Role 5 (observe) | Trước CP1 deadline vì Vai 5 chưa kịp; baseline quality report có artifact |
 | Implement `generate_phase1_report` + `generate_corruption_report` | Role 5 (observe) | Đảm bảo phase1 report và corruption comparison report tự động tạo từ pipeline |
 | Fix bug `write_json` argument order trong `reporting.py` | Role 5 (observe) | Bug không cho phép `generate_phase1_report` serialize pandas int64 |
+| Update `.gitignore` cho data artifacts | Toàn bộ team | Tránh conflict khi nhiều máy chạy pipeline cùng lúc; data artifacts không push lên Git |
 
 ## 3. Kết quả theo vai trò
 
@@ -172,6 +173,25 @@ Hoàn thành hai chuỗi nguyên nhân–bằng chứng sau:
 
 `mean_judge_score` repaired = 2.292 không bằng baseline = 2.333 (chênh -0.041). Kỳ vọng ban đầu: repaired phải khớp baseline hoàn toàn. Giả thuyết: LLM judge (GPT-4o-mini) non-deterministic giữa các runs → mỗi evaluation gọi LLM riêng, câu trả lời hơi khác → judge score hơi khác. Đã kiểm tra: retrieval_hit_rate và token_f1 phục hồi đúng bằng baseline → không phải retrieval issue. Token F1 repaired = 0.299 = baseline → extraction logic nhất quán.
 
+### CP6 — Final verification
+
+CP6 checkpoint bao gồm final review và freeze scope:
+
+**Final checklist:**
+- Repaired artifacts đầy đủ: `repaired_metrics.json`, `repaired_answers.json`, `repaired_quality.json`, `repaired_freshness.json` ✅
+- `corruption_report.md` tồn tại và khớp với tất cả JSON artifacts ✅
+- Baseline không bị ghi đè (retrieval_hit_rate = 0.875 đúng như CP3) ✅
+- .gitignore cập nhật — tất cả data artifacts được ignore ✅
+- Individual report hoàn chỉnh ✅
+
+**Frozen demo parts cho team:**
+
+1. **Ingest** — Verify raw records: `data/raw/crossref_records.json` (24 records) và lineage không đổi.
+2. **Clean** — Demo 3 CSV khác nhau: `papers_clean.csv` (baseline), `papers_clean_corrupted.csv` (24 rows + 1 duplicate), `papers_clean_repaired.csv` (24 rows, giống baseline). Repaired CSV = baseline CSV.
+3. **RAG** — Demo 3 Chroma collections: `papers-baseline`, `papers-corrupted`, `papers-repaired`. Smoke test query.
+4. **Eval** — Demo hit (authors, score=5, DOI đúng) và miss (categories, DOI sai, retrieval trả về paper khác).
+5. **Observe** — Trình bày comparison table từ `corruption_report.md`.
+
 ## 9. Điều học được và hướng cải thiện
 
 ### Ba điều quan trọng nhất
@@ -185,6 +205,8 @@ Hoàn thành hai chuỗi nguyên nhân–bằng chứng sau:
 ### Nếu có thêm thời gian
 
 Thêm pipeline smoke test tự động chạy sau mỗi checkpoint, kiểm tra: (1) baseline artifacts không bị modified (hash check), (2) Chroma collections count đúng (3), (3) quality report overall_passed tương ứng với kỳ vọng (baseline: True, corrupted: False, repaired: True). Hiện tại smoke test phải làm bằng tay. Automate này sẽ giảm thời gian debug ở CP5-CP6 đáng kể.
+
+Ngoài ra, thêm pre-commit hook kiểm tra data artifacts không được commit: nếu ai đó `git add data/results/` sẽ reject. Điều này tránh conflict khi nhiều người chạy pipeline cùng lúc trên các branch khác nhau.
 
 ## 10. Cam kết của thành viên
 

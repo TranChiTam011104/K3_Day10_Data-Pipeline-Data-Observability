@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import json
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 
-from core.config import load_settings, require_llm_credentials, normalized_provider
-from core.utils import now_utc, read_json, write_csv, write_json
-from evaluation.metrics import evaluate_pipeline
-from ingestion.cleaning import repair_clean_dataframe
+from core.config import Settings, load_settings, require_llm_credentials
+from core.utils import read_json, write_csv, write_json
+from ingestion.cleaning import repair_clean_dataframe, validate_clean_dataframe
 from ingestion.corruption import corrupt_clean_dataframe
 from ingestion.crossref import load_raw_records
 from observability.quality import build_freshness_report, run_data_quality_checks
@@ -16,10 +17,50 @@ from retrieval.embeddings import MiniLMEmbeddings
 from retrieval.index import LocalEmbeddingIndex
 
 
-def _ensure_provider(settings) -> None:
+def _load_clean_dataframe(path: Path) -> pd.DataFrame:
+    records = read_json(path)
+    if not isinstance(records, list) or not records:
+        raise ValueError(f"Clean dataset must be a non-empty JSON array: {path}")
+    return pd.DataFrame(records)
+
+
+def _write_dataframe(df: pd.DataFrame, csv_path: Path, json_path: Path) -> None:
+    write_csv(df, csv_path)
+    records = json.loads(df.to_json(orient="records", force_ascii=False))
+    write_json(json_path, records)
+
+
+def _load_baseline_run_date(settings: Settings) -> datetime:
+    audit_path = settings.paths.quality_dir / "cleaning_audit_baseline.json"
+    if not audit_path.is_file():
+        raise FileNotFoundError(
+            f"Baseline cleaning audit is required for reproducible repair: {audit_path}"
+        )
+    value = read_json(audit_path).get("run_date")
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"Baseline cleaning audit has no run_date: {audit_path}")
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(f"Invalid baseline cleaning run_date {value!r}") from exc
+
+
+def run_corruption_flow(settings: Settings) -> dict[str, Any]:
+    """Run the controlled corruption, evaluation and repair experiment.
+
+    The baseline clean data, index, answers and metrics are read-only inputs.
+    Repair is rebuilt from the committed raw snapshot, never from corrupted rows.
+    """
     require_llm_credentials(settings)
     provider = normalized_provider(settings)
-    if provider not in {"openai", "gemini", "anthropic", "openrouter", "ollama", "custom"}:
+    if provider not in {
+        "openai",
+        "gemini",
+        "anthropic",
+        "openrouter",
+        "ollama",
+        "custom",
+    }:
         raise RuntimeError(f"Unsupported LLM_PROVIDER: {settings.llm_provider}")
 
 
@@ -59,7 +100,9 @@ def main() -> None:
     )
 
     write_csv(corrupted_df, settings.paths.corrupted_clean_csv)
-    write_json(settings.paths.corrupted_clean_json, corrupted_df.to_dict(orient="records"))
+    write_json(
+        settings.paths.corrupted_clean_json, corrupted_df.to_dict(orient="records")
+    )
 
     # ── 3. Build corrupted index ────────────────────────────────────────────
     # Pass the output path explicitly so _derive_collection_name produces
@@ -90,23 +133,34 @@ def main() -> None:
         corrupted_df, settings=settings, report_name="corrupted"
     )
     corrupted_freshness = build_freshness_report(
-        corrupted_df, settings=settings, report_path=(
-            settings.paths.quality_dir / "freshness_corrupted.json"
-        )
+        corrupted_df,
+        settings=settings,
+        report_path=(settings.paths.quality_dir / "freshness_corrupted.json"),
     )
 
     # ── 6. Repair from trusted raw records ─────────────────────────────────
     raw_records = load_raw_records(settings.paths.raw_records_json)
-    repaired_df = repair_clean_dataframe(raw_records, run_date=now_utc())
-
-    write_csv(repaired_df, settings.paths.repaired_clean_csv)
-    write_json(settings.paths.repaired_clean_json, repaired_df.to_dict(orient="records"))
-
-    # Write cleaning audit for repaired run (aligns with role-3 contract)
-    audit = repaired_df.attrs.get("cleaning_audit", {})
-    write_json(
-        settings.paths.quality_dir / "cleaning_audit_repaired.json",
-        audit,
+    repaired = repair_clean_dataframe(
+        raw_records,
+        run_date=_load_baseline_run_date(settings),
+    )
+    repaired_errors = validate_clean_dataframe(repaired)
+    if repaired_errors:
+        raise ValueError(f"Repaired clean contract failed: {repaired_errors}")
+    try:
+        pd.testing.assert_frame_equal(
+            repaired.reset_index(drop=True),
+            baseline.reset_index(drop=True),
+            check_dtype=False,
+        )
+    except AssertionError as exc:
+        raise AssertionError(
+            "Repair rebuilt from the raw snapshot does not match the baseline"
+        ) from exc
+    _write_dataframe(
+        repaired,
+        settings.paths.repaired_clean_csv,
+        settings.paths.repaired_clean_json,
     )
 
     # ── 7. Build repaired index ─────────────────────────────────────────────
@@ -134,9 +188,9 @@ def main() -> None:
         repaired_df, settings=settings, report_name="repaired"
     )
     repaired_freshness = build_freshness_report(
-        repaired_df, settings=settings, report_path=(
-            settings.paths.quality_dir / "freshness_repaired.json"
-        )
+        repaired_df,
+        settings=settings,
+        report_path=(settings.paths.quality_dir / "freshness_repaired.json"),
     )
 
     # ── 10. Load metrics and baseline quality/freshness for comparison report ──

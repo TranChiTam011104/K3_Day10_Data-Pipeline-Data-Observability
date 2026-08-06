@@ -83,7 +83,7 @@
     "judge": {
       "score": 2,
       "correct": false,
-      "reasoning": "The model answer is close to the reference answer but is not materially correct as it provides a different date (2026-07-17 instead of 2026-07-13)."
+      "reasoning": "The model answer is close to the reference answer but is not materially correct as it provides a different date."
     }
   },
   {
@@ -170,7 +170,7 @@
     "judge": {
       "score": 2,
       "correct": false,
-      "reasoning": "The model answer only provides a very brief background statement and does not cover the objectives, methods, results, or conclusions of the study, which are essential components of a comprehensive summary."
+      "reasoning": "The model answer only provides a very brief background statement and lacks the comprehensive details found in the reference answer, such as the study's objective, methods, results, and conclusions. It does not adequately summarize the key findings or implications of the research."
     }
   },
   {
@@ -257,7 +257,7 @@
     "judge": {
       "score": 1,
       "correct": false,
-      "reasoning": "The model answer incorrectly identifies the author of the paper, while the reference answer correctly lists Wei Tian and Yuhao Zhou as the authors."
+      "reasoning": "The model answer incorrectly identifies the author of the paper, as the correct authors are Wei Tian and Yuhao Zhou."
     }
   },
   {
@@ -402,7 +402,7 @@
     "judge": {
       "score": 1,
       "correct": false,
-      "reasoning": "The model answer is incomplete and does not provide any relevant information about the paper's content, objectives, methods, results, or contributions. It only includes the word 'Abstract Background' without elaboration, failing to summarize the key points of the reference answer."
+      "reasoning": "The model answer is incomplete and does not provide any relevant information about the paper's content, objectives, methods, results, or contributions. It only includes the word 'Abstract Background' without any further details, making it materially incorrect."
     }
   },
   {

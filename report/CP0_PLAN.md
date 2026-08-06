@@ -510,3 +510,83 @@ Corruption thêm 1 stale paper (date 10 năm về trước). Repair phục hồi
 | --- | --- |
 | `src/pipelines/corruption_flow.py` | Implement hoàn toàn từ `NotImplementedError` |
 | `src/observability/reporting.py` | Thêm `baseline_quality` và `baseline_freshness` parameters vào `generate_corruption_report()` signature |
+
+---
+
+## 10. CP6 Evidence (Checkpoint 6 — 2026-08-06)
+
+**Ngày chạy:** 2026-08-06
+**Trạng thái:** ✅ Final review hoàn tất — comparison report đầy đủ, .gitignore đúng, demo parts phân chia
+
+### 10a. Final checklist
+
+| Checklist item | Status |
+| --- | --- |
+| Repaired artifacts đầy đủ | ✅ 5/5 present |
+| `data/reports/corruption_report.md` tồn tại | ✅ |
+| Baseline không bị ghi đè | ✅ (retrieval_hit_rate = 0.875 đúng) |
+| Comparison report khớp JSON artifacts | ✅ |
+| Không có secret/API key trong repo | ✅ |
+| .gitignore cập nhật | ✅ |
+| Individual report hoàn chỉnh | ✅ |
+
+### 10b. Freeze scope
+
+**Đã chốt:** Pipeline hoàn chỉnh 3 trạng thái. Không thêm features mới. Demo dùng artifact thật.
+
+**Phạm vi CP6 cho team:**
+- **Ingest:** Verify raw records đọc được, lineage evidence.
+- **Clean:** Demo 3 clean CSV (baseline/corrupted/repaired) khác nhau, repaired CSV = baseline CSV.
+- **RAG:** Demo 3 Chroma collections tồn tại đồng thời, smoke test query.
+- **Eval:** Demo 1 hit (authors) và 1 miss (categories) từ baseline answers.
+- **Observe:** Trình bày comparison table từ `corruption_report.md`.
+
+### 10c. .gitignore — data artifacts không push
+
+`.gitignore` đã được cập nhật để ignore **tất cả** data artifacts — những file sinh ra khi chạy pipeline, không phải do con người viết, khác nhau trên mỗi máy:
+
+**Lý do không push data artifacts:**
+1. **Crossref API response** — 238KB JSON từ Crossref API, thay đổi mỗi khi chạy (newer papers được thêm vào).
+2. **Clean/evaluation results** — non-deterministic vì LLM judge gọi API thật; nếu push rồi người khác chạy lại, git sẽ conflict liên tục.
+3. **Chroma database** — binary SQLite, không merge được, máy khác có thể dùng model khác → index khác.
+4. **Embedding manifests** — phụ thuộc embedding model, OS, sentence-transformers version.
+
+**Những file được giữ lại để push:**
+- `data/eval/test_set.json` — ground truth do con người/team tạo, không thay đổi khi chạy pipeline (không phụ thuộc API).
+- `data/quality/gx/` — cấu hình GoodData GX, không phải artifact sinh ra.
+- Tất cả `.gitkeep` files — giữ cấu trúc thư mục.
+
+### 10d. Demo script (cho team trình bày)
+
+```bash
+# 1. Verify 3 Chroma collections
+python -c "
+import chromadb
+c = chromadb.PersistentClient(path='data/chroma')
+for col in c.list_collections():
+    print(col.name, col.count())
+"
+
+# 2. Show comparison table
+cat data/reports/corruption_report.md
+
+# 3. Show corruption log
+python -c "import json; print(json.dumps(json.load(open('data/results/corruption_log.json')), indent=2))"
+```
+
+### 10e. Code changes trong CP6
+
+| File | Thay đổi |
+| --- | --- |
+| `.gitignore` | Thêm tất cả data artifacts: raw, clean, embeddings, results, quality reports |
+| Không sửa file `.py` nào | Chỉ review và verify |
+
+### 10f. Overall pipeline summary
+
+| Trạng thái | retrieval_hit_rate | Quality gates | Freshness stale |
+| --- | ---: | ---: | ---: |
+| **Baseline** | 0.875 | 4/5 | 1 |
+| **Corrupted** | 0.833 ↓ | 2/5 ↓ | 2 ↑ |
+| **Repaired** | 0.875 ↑ | 4/5 ↑ | 1 ↓ |
+
+**Kết luận:** Corruption có thể đo được tác động (Δ=-0.042). Repair từ raw phục hồi hoàn toàn. Recovery là thật, không phải hard-code.

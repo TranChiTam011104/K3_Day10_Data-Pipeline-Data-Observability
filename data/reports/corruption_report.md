@@ -9,7 +9,7 @@
 | retrieval_hit_rate | 0.875 | 0.833 (-0.042) | 0.875 |
 | mean_token_f1 | 0.299 | 0.258 (-0.042) | 0.299 |
 | judge_accuracy | 0.250 | 0.208 (-0.042) | 0.250 |
-| mean_judge_score | 2.333 | 2.167 (-0.167) | 2.292 |
+| mean_judge_score | 2.333 | 2.125 (-0.208) | 2.292 |
 | samples | 24 | 24 (+0.000) | 24 |
 
 ## 2. Data Quality

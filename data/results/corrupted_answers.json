@@ -83,7 +83,7 @@
     "judge": {
       "score": 2,
       "correct": false,
-      "reasoning": "The model answer is close to the reference answer but is not materially correct as it provides a different date (2026-07-17 instead of 2026-07-13)."
+      "reasoning": "The model answer is close to the reference answer but is not materially correct as it provides a different date (July 17 instead of July 13)."
     }
   },
   {
@@ -170,7 +170,7 @@
     "judge": {
       "score": 2,
       "correct": false,
-      "reasoning": "The model answer only provides a very brief background statement and does not cover the key elements of the study, such as the objective, methods, results, and conclusions. It lacks depth and fails to summarize the main findings and implications of the research."
+      "reasoning": "The model answer only provides a very brief background statement and lacks the comprehensive details found in the reference answer, such as the study's objective, methods, results, and conclusions. It does not adequately summarize the key findings or implications of the research."
     }
   },
   {
@@ -257,7 +257,7 @@
     "judge": {
       "score": 1,
       "correct": false,
-      "reasoning": "The model answer provides a name (Haopeng Yang) that does not match the authors listed in the reference answer (Wei Tian, Yuhao Zhou). Therefore, it is incorrect."
+      "reasoning": "The model answer incorrectly identifies the author of the paper, as the correct authors are Wei Tian and Yuhao Zhou."
     }
   },
   {
@@ -313,9 +313,9 @@
     "retrieval_hit": false,
     "token_f1": 0.0,
     "judge": {
-      "score": 2,
+      "score": 1,
       "correct": false,
-      "reasoning": "The model answer is incorrect as it provides a date (2026-07-17) that is not the same as the reference answer (2026-06-15). The model answer is only one month off, which shows some proximity but is still materially incorrect."
+      "reasoning": "The model answer provides a date (2026-07-17) that is incorrect compared to the reference answer (2026-06-15). The model answer is materially incorrect."
     }
   },
   {
@@ -402,7 +402,7 @@
     "judge": {
       "score": 1,
       "correct": false,
-      "reasoning": "The model answer only provides the heading 'Abstract Background' without any content or summary of the paper. It fails to address the key points, objectives, methods, results, and contributions outlined in the reference answer."
+      "reasoning": "The model answer is incomplete and does not provide any relevant information about the paper's content, objectives, methods, results, or contributions. It only includes the word 'Abstract Background' without any further details, making it materially incorrect."
     }
   },
   {
@@ -634,7 +634,7 @@
     "judge": {
       "score": 1,
       "correct": false,
-      "reasoning": "The model answer does not summarize the paper's content accurately or comprehensively. It only mentions the capabilities of large language models without addressing the specific issues, solutions, or findings presented in the reference answer regarding the HybRAG framework and its significance in knowledge graph-based question answering."
+      "reasoning": "The model answer does not summarize the key points of the paper, focusing instead on the general capabilities of large language models without addressing the specific contributions and findings of the HybRAG framework discussed in the reference answer."
     }
   },
   {
@@ -663,7 +663,7 @@
     "judge": {
       "score": 1,
       "correct": false,
-      "reasoning": "The model answer provides a publication date of 2026-05-09, which is incorrect compared to the reference answer of 2026-02-13."
+      "reasoning": "The model answer provides a publication date of 2026-05-09, which is incorrect compared to the reference answer of 2026-02-13. The dates are different, indicating a significant error."
     }
   },
   {
