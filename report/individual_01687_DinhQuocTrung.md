@@ -2,15 +2,15 @@
 
 ## 1. Thông tin cá nhân
 
-| Thông tin | Nội dung |
-| --- | --- |
-| Họ và tên | Đinh Quốc Trung |
-| MSSV | 2A202501687 |
-| Khóa/Lớp | K3 |
-| Tên nhóm | Nhóm 5 người |
-| Vai trò chính | Vai trò 3 — Cleaning & Corruption Owner |
-| Repository | `K3_Day10_Data-Pipeline-Data-Observability` |
-| Ngày hoàn thành phần độc lập | 2026-08-06 |
+| Thông tin                    | Nội dung                                    |
+| ---------------------------- | ------------------------------------------- |
+| Họ và tên                    | Đinh Quốc Trung                             |
+| MSSV                         | 2A202601687                                 |
+| Khóa/Lớp                     | K3                                          |
+| Tên nhóm                     | Nhóm 5 người                                |
+| Vai trò chính                | Vai trò 3 — Cleaning & Corruption Owner     |
+| Repository                   | `K3_Day10_Data-Pipeline-Data-Observability` |
+| Ngày hoàn thành phần độc lập | 2026-08-06                                  |
 
 ## 2. Vai trò và phạm vi công việc
 
@@ -19,13 +19,14 @@ repair từ raw snapshot theo phân công nhóm 5 người. Tôi không nhận o
 Crossref ingestion, RAG/index, evaluation, observability report hoặc pipeline
 orchestration.
 
-| Module/deliverable | File/hàm phụ trách | Input | Output | Trạng thái |
-| --- | --- | --- | --- | --- |
-| Cleaning contract | `src/ingestion/cleaning.py` | `list[PaperRecord]`, `run_date` | Clean DataFrame + audit counts | Hoàn thành và unit-tested |
-| Corruption | `src/ingestion/corruption.py` | Baseline clean DataFrame | Corrupted copy + strict JSON log | Hoàn thành và unit-tested |
-| Repair | `repair_clean_dataframe` | Trusted raw `PaperRecord` snapshot | Rebuilt clean DataFrame | Hoàn thành và unit-tested |
-| Handoff contract | `report/role3_cleaning_corruption_contract.md` | Starter/downstream source | Schema, ownership, blockers | Hoàn thành |
-| Real artifacts/metrics | `data/clean`, `data/results` | Upstream ingestion/pipelines | Baseline/corrupted/repaired evidence | Chưa thể chạy vì dependency upstream còn thiếu |
+| Module/deliverable  | File/hàm phụ trách                                               | Input                                     | Output                                    | Trạng thái                                     |
+| ------------------- | ---------------------------------------------------------------- | ----------------------------------------- | ----------------------------------------- | ---------------------------------------------- |
+| Cleaning contract   | `src/ingestion/cleaning.py`                                      | `list[PaperRecord]`, `run_date`           | Clean DataFrame + audit counts            | Hoàn thành và unit-tested                      |
+| Corruption          | `src/ingestion/corruption.py`                                    | Baseline clean DataFrame                  | Corrupted copy + strict JSON log          | Hoàn thành và unit-tested                      |
+| Repair              | `repair_clean_dataframe`                                         | Trusted raw `PaperRecord` snapshot        | Rebuilt clean DataFrame                   | Hoàn thành và unit-tested                      |
+| Handoff contract    | `report/role3_cleaning_corruption_contract.md`                   | Starter/downstream source                 | Schema, ownership, blockers               | Hoàn thành                                     |
+| Real data artifacts | `data/clean`, `data/quality`, `data/results/corruption_log.json` | 24 cached Crossref records                | Baseline/corrupted/repaired data evidence | Hoàn thành                                     |
+| RAG/quality metrics | `data/results`, `data/quality`                                   | Test set, index, evaluator, observability | Baseline/corrupted/repaired metrics       | Chưa thể chạy vì dependency upstream còn thiếu |
 
 ## 3. Kết quả theo checkpoint
 
@@ -34,14 +35,16 @@ orchestration.
 - **CP1:** chuẩn hóa HTML/whitespace, authors/categories, dates; tính
   `age_days`, `summary_chars`, `text_for_embedding`; filter có lý do và dedupe
   stable `paper_id`.
-- **CP2–3:** thêm validation cho schema index/evaluation. Chưa tuyên bố smoke
-  test index hoặc baseline thành công vì upstream test set/pipeline còn TODO và
-  môi trường thiếu LangChain.
+- **CP2–3:** thêm validation cho schema index/evaluation; chạy trên 24 raw
+  Crossref records thật và ghi clean CSV/JSON cùng audit. Chưa tuyên bố smoke
+  test index hoặc baseline thành công vì upstream test set/observability còn
+  TODO và môi trường thiếu LangChain.
 - **CP4:** corruption dùng deep copy, không mutate baseline.
 - **CP5:** sáu corruption deterministic trên sáu record riêng, có row-level
-  log về ID, parameter, before/after value và count.
-- **CP6:** repair chỉ nhận raw records và chạy lại cùng cleaning path; không
-  copy hoặc sửa tay baseline/corrupted DataFrame.
+  log về ID, parameter, before/after value và count; artifacts thật có 1
+  duplicate ID, 1 blank summary và 1 marked noise row.
+- **CP6:** repair chỉ nhận raw records và chạy lại cùng cleaning path; baseline
+  và repaired JSON có cùng SHA-256.
 
 ## 4. Contract kỹ thuật
 
@@ -69,9 +72,25 @@ Lệnh đã chạy:
 $env:PYTHONPATH='src'
 $env:PYTHONDONTWRITEBYTECODE='1'
 python -m pytest -q -p no:cacheprovider tests/test_cleaning_corruption.py
+python script/run_role3_data_flow.py
+python script/run_phase1.py
 ```
 
-Kết quả lượt chạy cuối: `6 passed in 0.87s`.
+Kết quả test lượt cuối sau tích hợp upstream: `7 passed in 1.05s`.
+
+Kết quả role3 data flow thật:
+
+- raw/baseline/corrupted/repaired: `24/24/24/24` rows;
+- baseline: 0 duplicate ID, 0 blank summary;
+- corrupted: 1 duplicate ID, 1 blank summary, 1 marked noise row;
+- repaired: 0 duplicate ID, 0 blank summary;
+- baseline và repaired JSON cùng SHA-256
+  `e5b40fa9900c1a495af3c075af9d4b5417df872cfe95eb4db77732acb13e8efc`;
+- toàn bộ clean/audit/log JSON parse được ở strict mode.
+
+Baseline preflight dừng trước khi ghi index/metrics với lỗi thực tế
+`ModuleNotFoundError: No module named 'datasets'` trong import
+`src/evaluation/metrics.py`.
 
 Test dùng `PaperRecord` fixture được khai báo rõ trong test, không được ghi vào
 `data/` và không được dùng làm metric bài nộp. Test xác minh normalization,
@@ -96,15 +115,16 @@ Lỗi đã xử lý trong lúc test: corruption log ban đầu chứa `numpy.int
 Mình thêm chuyển đổi recursive về scalar/list/dict JSON-native; sáu test sau đó
 pass.
 
-Blocker chưa thuộc ownership của tôi:
+Blocker còn lại ngoài ownership của tôi:
 
-- `src/ingestion/crossref.py` chưa parse/fetch/load nên chưa có raw artifact;
-- `src/evaluation/testset.py`, `src/pipelines/phase1.py` và
-  `src/pipelines/corruption_flow.py` còn `NotImplementedError`;
+- `src/evaluation/testset.py`, `src/observability/quality.py`,
+  `src/observability/reporting.py` và `src/pipelines/corruption_flow.py` còn
+  `NotImplementedError`;
 - máy hiện chạy Python 3.14.6, ngoài range 3.11–3.13 của project, và chưa có
-  `uv`/LangChain trong environment đang kiểm tra.
+  `uv`; environment cũng thiếu `datasets` và LangChain.
 
-Vì vậy tôi không ghi bất kỳ số baseline/corrupted/repaired nào.
+Vì vậy tôi chỉ ghi data-level counts/hash đã kiểm chứng, không ghi RAG hoặc
+observability metrics.
 
 ## 8. Hiểu biết luồng end-to-end
 
@@ -119,14 +139,14 @@ cùng evaluator/test set được đối chiếu với artifact thật.
 
 ## 9. Phân tích metrics
 
-| Metric/signal | Baseline | Corrupted | Repaired | Nhận xét |
-| --- | ---: | ---: | ---: | --- |
-| `retrieval_hit_rate` | N/A | N/A | N/A | Chờ evaluator/pipeline upstream |
-| `mean_token_f1` | N/A | N/A | N/A | Chờ evaluator/pipeline upstream |
-| `judge_accuracy` | N/A | N/A | N/A | Chờ LLM credentials và evaluator |
-| `mean_judge_score` | N/A | N/A | N/A | Chờ LLM credentials và evaluator |
-| Quality checks | N/A | N/A | N/A | Observability owner chưa triển khai |
-| Freshness status | N/A | N/A | N/A | Observability owner chưa triển khai |
+| Metric/signal        | Baseline | Corrupted | Repaired | Nhận xét                            |
+| -------------------- | -------: | --------: | -------: | ----------------------------------- |
+| `retrieval_hit_rate` |      N/A |       N/A |      N/A | Chờ evaluator/pipeline upstream     |
+| `mean_token_f1`      |      N/A |       N/A |      N/A | Chờ evaluator/pipeline upstream     |
+| `judge_accuracy`     |      N/A |       N/A |      N/A | Chờ LLM credentials và evaluator    |
+| `mean_judge_score`   |      N/A |       N/A |      N/A | Chờ LLM credentials và evaluator    |
+| Quality checks       |      N/A |       N/A |      N/A | Observability owner chưa triển khai |
+| Freshness status     |      N/A |       N/A |      N/A | Observability owner chưa triển khai |
 
 Không có chuỗi nguyên nhân–metric nào được kết luận khi chưa có real artifacts.
 Sau khi upstream hoàn thành, cần chạy cùng raw snapshot, test set, top-k và

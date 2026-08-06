@@ -128,3 +128,90 @@ phép hard-code path trong code module khác — đó là lý do `core/config.py
   answers hay metrics.
 - Report phải trỏ tới artifact thật; không commit API key, không commit
   `.env`.
+
+---
+
+## 6. CP1 Evidence (Checkpoint 1 — 2026-08-06)
+
+**Ngày chạy:** 2026-08-06
+**Trạng thái:** ✅ Baseline pipeline chạy end-to-end thành công
+
+### 6a. Clean contract verification
+
+| Metric | Giá trị | Ghi chú |
+| --- | --- | --- |
+| Raw items fetched | 24 | Crossref trả về đủ 24 items |
+| Raw records parsed | 24 | 24/24 parse thành PaperRecord |
+| Clean output rows | 24 | 24/24 survive cleaning; 0 dropped |
+| Duplicate paper_ids | 0 | ✅ |
+| Null paper_ids | 0 | ✅ |
+| Empty text_for_embedding | 0 | ✅ |
+| age_days range | 1–193 | Một paper cũ nhất: 193 days |
+| Stale rows (>180 days) | 1 | Xem chi tiết bên dưới |
+
+**Blocker nhỏ:** 1 paper có `age_days = 193 > 180` (freshness threshold). Đây là
+dữ liệu thật từ Crossref (xuất bản 2026-01-25), không phải bug cleaning.
+CP3 report sẽ ghi nhận là "⚠️ 1 paper exceeds freshness threshold".
+
+### 6b. LLM provider configuration
+
+| Setting | Giá trị | Ghi chú |
+| --- | --- | --- |
+| LLM_PROVIDER | openai | Đổi từ gemini (vì `.env` có key OpenAI) |
+| LLM_MODEL | gpt-4o-mini | Thay vì gemini-2.5-flash |
+| OPENAI_API_KEY | ✅ present | Không điền vào report (bí mật) |
+
+### 6c. Baseline evaluation metrics (phase1 chạy thành công)
+
+| Metric | Giá trị |
+| --- | --- |
+| samples | 24 |
+| retrieval_hit_rate | 0.875 |
+| mean_token_f1 | 0.348 |
+| judge_accuracy | 0.292 |
+| mean_judge_score | 2.500 |
+| ragas | skipped (RUN_RAGAS not set) |
+
+**Giải thích metric:**
+- `retrieval_hit_rate = 0.875` → 21/24 câu hỏi trả về đúng document trong top-k.
+- `mean_token_f1 = 0.348` → Trung bình token-level F1 giữa ground truth và answer.
+- `judge_accuracy = 0.292` → Chỉ 7/24 câu trả lời LLM judge đánh giá là "materially correct".
+- `mean_judge_score = 2.500` → Trung bình LLM judge cho 2.5/5.
+
+Những con số này sẽ được dùng làm baseline để so sánh với corrupted/repaired ở CP5–CP6.
+
+### 6d. All artifacts present ✅
+
+| Artifact | Path | Size |
+| --- | --- | --- |
+| Raw API response | `data/raw/crossref_response.json` | 238,039 bytes |
+| Raw records JSON | `data/raw/crossref_records.json` | 58,184 bytes |
+| Clean CSV | `data/clean/papers_clean.csv` | 99,019 bytes |
+| Clean JSON | `data/clean/papers_clean.json` | 114,315 bytes |
+| Embedding manifest | `data/embeddings/papers_embeddings.json` | 115,522 bytes |
+| Test set | `data/eval/test_set.json` | 18,030 bytes |
+| Baseline metrics | `data/results/baseline_metrics.json` | 251 bytes |
+| Baseline answers | `data/results/baseline_answers.json` | 237,280 bytes |
+| Quality report | `data/quality/quality_baseline.json` | 1,233 bytes |
+| Freshness report | `data/quality/freshness_report.json` | 337 bytes |
+| Phase 1 report | `data/reports/phase1_report.md` | 3,174 bytes |
+
+### 6e. Blocker cho CP2
+
+**Không có blocker lớn.** Pipeline end-to-end chạy thành công.
+Một số lưu ý:
+1. `RUN_RAGAS=1` để enable Ragas evaluation (tùy thời gian).
+2. 1 paper stale — không ảnh hưởng baseline nhưng ghi nhận trong report.
+3. `corruption_flow.py` vẫn còn `TODO(student)` — sẽ implement ở CP5.
+
+### 6f. Code changes trong CP1
+
+Ngoài `crossref.py` và `cleaning.py` (do team implement), Vai trò 1 đã thay đổi:
+
+| File | Thay đổi |
+| --- | --- |
+| `src/pipelines/phase1.py` | Implement đầy đủ orchestration thay vì `NotImplementedError` |
+| `src/evaluation/testset.py` | Implement `build_test_set` (vì Vai 5 chưa làm kịp CP1) |
+| `src/observability/quality.py` | Implement `run_data_quality_checks` + `build_freshness_report` + custom JSON serializer |
+| `src/observability/reporting.py` | Implement `generate_phase1_report` + `generate_corruption_report` |
+| `.env` | Đổi `LLM_PROVIDER=gemini` → `openai`, `LLM_MODEL=gpt-4o-mini` |

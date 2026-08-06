@@ -7,6 +7,7 @@ from .cleaning import (
 )
 from .corruption import corrupt_clean_dataframe
 from .crossref import PaperRecord, fetch_source_records, load_raw_records, parse_crossref_payload
+from .role3_flow import run_role3_data_flow
 
 __all__ = [
     "CLEAN_COLUMNS",
@@ -18,5 +19,6 @@ __all__ = [
     "load_raw_records",
     "parse_crossref_payload",
     "repair_clean_dataframe",
+    "run_role3_data_flow",
     "validate_clean_dataframe",
 ]
