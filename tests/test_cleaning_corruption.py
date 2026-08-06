@@ -22,6 +22,7 @@ from core.utils import write_json
 
 
 RUN_DATE = datetime(2026, 8, 6, tzinfo=UTC)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def paper(number: int, **overrides) -> PaperRecord:
@@ -169,3 +170,43 @@ def test_role3_flow_writes_real_handoff_contract_to_configured_paths(tmp_path) -
     baseline_json = json.loads(settings.paths.clean_json.read_text(encoding="utf-8"))
     repaired_json = json.loads(settings.paths.repaired_clean_json.read_text(encoding="utf-8"))
     assert baseline_json == repaired_json
+
+
+def test_committed_role3_artifacts_preserve_raw_to_repair_lineage() -> None:
+    data_dir = PROJECT_ROOT / "data"
+    raw = json.loads((data_dir / "raw" / "crossref_records.json").read_text(encoding="utf-8"))
+    baseline = json.loads((data_dir / "clean" / "papers_clean.json").read_text(encoding="utf-8"))
+    corrupted = json.loads(
+        (data_dir / "clean" / "papers_clean_corrupted.json").read_text(encoding="utf-8")
+    )
+    repaired = json.loads(
+        (data_dir / "clean" / "papers_clean_repaired.json").read_text(encoding="utf-8")
+    )
+    log = json.loads((data_dir / "results" / "corruption_log.json").read_text(encoding="utf-8"))
+
+    assert len(raw) == len(baseline) == len(corrupted) == len(repaired) == 24
+    assert baseline == repaired
+    assert len({row["paper_id"] for row in baseline}) == 24
+    assert len({row["paper_id"] for row in corrupted}) == 23
+    assert sum(row["summary"] == "" for row in corrupted) == 1
+    assert sum("[CORRUPTED_NOISE]" in row["summary"] for row in corrupted) == 1
+    assert log["baseline_mutated"] is False
+    assert log["operation_count"] == 6
+
+
+def test_every_committed_corruption_target_has_evaluation_lineage() -> None:
+    data_dir = PROJECT_ROOT / "data"
+    test_set = json.loads((data_dir / "eval" / "test_set.json").read_text(encoding="utf-8"))
+    log = json.loads((data_dir / "results" / "corruption_log.json").read_text(encoding="utf-8"))
+
+    evaluated_ids = {
+        paper_id
+        for sample in test_set
+        for paper_id in sample["ground_truth_doc_ids"]
+    }
+    affected_ids = {
+        paper_id
+        for operation in log["operations"]
+        for paper_id in operation["paper_ids"]
+    }
+    assert affected_ids <= evaluated_ids
