@@ -9,7 +9,7 @@ interfaces only; baseline/corrupted/repaired metrics must come from real runs.
 | --- | --- | --- |
 | CP0 | Define raw-to-clean and clean-to-index contract | Implemented here |
 | CP1 | Normalize, filter, deduplicate, calculate freshness and embedding text | Implemented and unit-tested |
-| CP2 | Validate fields required by index/evaluation | Contract/test-set IDs verified; local index smoke remains blocked by dependencies and missing Chroma collection |
+| CP2 | Validate fields required by index/evaluation | Contract/test-set IDs verified; deterministic non-blank test-set generation added; local index smoke remains blocked |
 | CP3 | Verify real clean artifacts and quality-ready fields | Completed on 24 cached Crossref records; committed baseline artifacts are internally consistent but not locally reproduced |
 | CP4 | Preserve baseline; do not corrupt during the break | Enforced by copy-on-corrupt behavior |
 | CP5 | Apply deterministic corruption and write row-level log | Implemented, tested and materialized from the real raw snapshot |
@@ -75,7 +75,8 @@ defined in `Settings.paths`.
 `repair_clean_dataframe(raw_records, run_date)` calls the same deterministic
 cleaning path used for baseline. It intentionally accepts raw `PaperRecord`
 values, not a corrupted DataFrame, so repair cannot silently copy or hand-edit
-the baseline/corrupted artifacts.
+the baseline/corrupted artifacts. The integrated flow restores `run_date` from
+`cleaning_audit_baseline.json`, preventing `age_days` drift on a later rerun.
 
 ## Integration state and current blockers
 
@@ -87,8 +88,9 @@ both observability schemas currently present in the repository.
 
 - The current observability source still returns a different schema from the
   committed baseline quality artifact after the latest merge.
-- The committed test set contains 6/24 blank ground truths and its builder
-  uses random UUIDs despite claiming deterministic output.
+- The committed baseline test set still contains 6/24 blank ground truths.
+  The builder now uses ordered question types, UUID5 IDs and non-blank fallback,
+  but the artifact must only be replaced together with a full baseline rerun.
 - `data/chroma/` is absent while the embedding manifest points to an absolute
   persisted path on the upstream machine.
 - `uv` is unavailable and the system Python is 3.14.6, outside the project's
