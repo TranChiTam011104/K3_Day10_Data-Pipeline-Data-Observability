@@ -1,0 +1,9 @@
+{
+  "latest_published": "2026-08-05T00:00:00+00:00",
+  "oldest_published": "2026-01-25T00:00:00+00:00",
+  "stale_rows": 1.0,
+  "total_rows": 24.0,
+  "is_fresh": false,
+  "threshold_days": 180.0,
+  "report_path": "D:\\Hoc_voi_cha_hanh\\AIInAction\\K3_Day10_Data-Pipeline-Data-Observability\\data\\quality\\freshness_report.json"
+}
